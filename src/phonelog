@@ -129,7 +129,8 @@ def createList():
 			gobject.TYPE_STRING,
 			gobject.TYPE_BOOLEAN )  #the boolean is there for coloring
 			)
-
+	
+	
 	renderer = gtk.CellRendererText()
 	renderer.set_property('weight', 800)
 
@@ -178,15 +179,29 @@ def populateList(list, type, previous_time, visual_flag = False):
 		calls = phoneLog.GetCallsList(type)
 	
 	model = list.get_model()
+
+	last_parent_added = None
+	
 	for call in calls:
 		if use_ophonekit or (call[0] != ""): #hack because i send dbus empty
+			number = call[0]
+			contact = getContact(number) 
 			call_time = datetime.fromtimestamp( float(call[1]) )
-			model.append(None, ( getContact(call[0]) , 
-	                        	call[0] ,
+			
+			if (last_parent_added != None) and (model.get_value(last_parent_added, NAME_COLUMN) == contact) and (contact != ""):
+				parent = last_parent_added
+			else:
+				parent = None
+				
+			parent_added = model.append(parent, ( contact , 
+	                        	number ,
 				 	call_time.strftime("%d-%m-%Y %H:%M:%S") ,
 					visual_flag and (call_time > previous_time)
 					)
 				)
+
+			if parent == None:
+				last_parent_added = parent_added
 
 												
 def getLastTime(file = TIME_FILE):

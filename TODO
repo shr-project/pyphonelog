@@ -1,2 +1,2 @@
-* add a limit to x records
+* add a settings option to limit to X records and/or show only calls after the date x.
 * clear lists only updates the list after a restart of the app. make it an instant change
