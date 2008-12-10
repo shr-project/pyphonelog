@@ -1,0 +1,2 @@
+* add a limit to x records
+* clear lists only updates the list after a restart of the app. make it an instant change
