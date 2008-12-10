@@ -262,6 +262,8 @@ def numberButton_clicked (button, list):
 	
 #End of gtk callbacks
 
+systemBus = dbus.SystemBus()
+
 use_ophonekit = useOphonekit()
 
 if not use_ophonekit:
@@ -269,7 +271,6 @@ if not use_ophonekit:
 else:
 	database = sqlite3.connect(OPHONEKITD_DB)	
 
-systemBus = dbus.SystemBus()
 contactsObject = getContactsObject(systemBus)
 phoneObject = getPhoneObject(systemBus)
 
