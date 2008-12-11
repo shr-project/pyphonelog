@@ -182,13 +182,19 @@ def populateList(list, type, previous_time, visual_flag = False):
 
 	last_parent_added = None
 	
+	#add to model
 	for call in calls:
 		if use_ophonekit or (call[0] != ""): #hack because i send dbus empty
 			number = call[0]
 			contact = getContact(number) 
 			call_time = datetime.fromtimestamp( float(call[1]) )
-			
-			if (last_parent_added != None) and (model.get_value(last_parent_added, NAME_COLUMN) == contact) and (contact != ""):
+
+			#check if should be grouped
+			if (last_parent_added != None) and \
+					(((model.get_value(last_parent_added, NAME_COLUMN) == contact) \
+						and (contact != "")) \
+					or (model.get_value(last_parent_added, NUMBER_COLUMN) == number)):
+					
 				parent = last_parent_added
 			else:
 				parent = None
