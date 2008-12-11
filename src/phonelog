@@ -58,13 +58,12 @@ CALL_STATUS_HELD = 3
 CALL_STATUS_RELEASE = 4
 use_ophonekit = True
 
-
-
-NAME_COLUMN = 0
+CONTACT_COLUMN = 0
 NUMBER_COLUMN = 1
 DATE_COLUMN = 2
 
-
+# a global used by show number button
+show_column = CONTACT_COLUMN
 
 #Thanks to Thomas for adjusting this functions from the zhone.
 def getContact(number):
@@ -114,7 +113,7 @@ def createCallsTab(list):
 	callButton = gtk.Button("Call")
 	callButton.connect ("clicked", callButton_clicked, list)
 
-	numberButton = gtk.Button("Show Number")
+	numberButton = gtk.Button("Show Numbers")
 	numberButton.connect ("clicked", numberButton_clicked, list)
 
 	buttons.pack_start(callButton, True, padding = 1)
@@ -134,10 +133,10 @@ def createList():
 	renderer = gtk.CellRendererText()
 	renderer.set_property('weight', 800)
 
-	column0 = gtk.TreeViewColumn("Name", renderer, text=0, weight_set=3)
-	list.insert_column( column0, NAME_COLUMN)
-	column0 = gtk.TreeViewColumn("Number", renderer, text=1, weight_set=3)
-	list.insert_column( column0, NUMBER_COLUMN )
+	column0 = gtk.TreeViewColumn("Contact", renderer, text=0, weight_set=3)
+	list.insert_column( column0, CONTACT_COLUMN)
+	#column0 = gtk.TreeViewColumn("Number", renderer, text=1, weight_set=3)
+	#list.insert_column( column0, NUMBER_COLUMN )
 	column0 = gtk.TreeViewColumn("Time", renderer, text=2, weight_set=3)
 	list.insert_column( column0, DATE_COLUMN )
 
@@ -191,13 +190,17 @@ def populateList(list, type, previous_time, visual_flag = False):
 
 			#check if should be grouped
 			if (last_parent_added != None) and \
-					(((model.get_value(last_parent_added, NAME_COLUMN) == contact) \
+					(((model.get_value(last_parent_added, CONTACT_COLUMN) == contact) \
 						and (contact != "")) \
 					or (model.get_value(last_parent_added, NUMBER_COLUMN) == number)):
 					
 				parent = last_parent_added
 			else:
 				parent = None
+
+			#We want the contact to show as the number if it's not in the phonebook.
+			if contact == "":
+				contact = number
 				
 			parent_added = model.append(parent, ( contact , 
 	                        	number ,
@@ -254,13 +257,14 @@ def createSettingsTab():
 
 
 def getSelectedNumber(list):
-	selected = list.get_selection().get_selected()
+	
+	selected = list.get_selection().get_selected_rows()
+	selected = selected[1][0]
 
-	if selected[1] == None:
-		return None
-	else:
-		number = selected[0].get_value(selected[1], NUMBER_COLUMN)
-		return number
+	row = list.get_model()[selected]
+
+	number = row[NUMBER_COLUMN]
+	return number
 	
 #GTK callbacks:
 def settingsErase_clicked (button, list_type):
@@ -278,8 +282,24 @@ def callButton_clicked (button, list):
 		phoneObject.Initiate (number, 'voice')
 	
 def numberButton_clicked (button, list):
-	number = getSelectedNumber(list)
-	print number
+	global show_column
+	
+	contact_column = list.get_column(CONTACT_COLUMN)
+	renderer = contact_column.get_cell_renderers()[0]
+	
+
+	if show_column == CONTACT_COLUMN:
+		show_column = NUMBER_COLUMN
+		button_label = "Show Names"
+
+	else:
+		show_column = CONTACT_COLUMN
+		button_label = "Show Numbers"
+		
+	button.set_label(button_label)
+	contact_column.set_attributes(renderer, text=show_column)
+
+	
 	
 #End of gtk callbacks
 
