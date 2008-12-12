@@ -14,7 +14,7 @@ Written by Tom Hacohen.
 Licensed by GPLv2
 """
 
-__version__ = "0.10.1"
+__version__ = "0.13.0"
 
 import dbus
 import gobject, gtk
@@ -58,14 +58,54 @@ CALL_STATUS_HELD = 3
 CALL_STATUS_RELEASE = 4
 use_ophonekit = True
 
-CONTACT_COLUMN = 0
-NUMBER_COLUMN = 1
+#POSITION IN MODEL
+CONTACT_POSITION = 0
+NUMBER_POSITION = 1
+DATE_POSITION = 2
+STATUS_POSITION = 4
+
+#ACTUAL GUI POSTITON
+CONTACT_COLUMN = 1
 DATE_COLUMN = 2
+STATUS_COLUMN = 0
+
+#PAGES POSITIONS
+PAGE_INCOMING = 0 
+PAGE_OUTGOING = 1
+PAGE_MISSED = 2
+PAGE_GENERAL = 3
+PAGE_SETTINGS = 4
+
 
 # a global used by show number button
-show_column = CONTACT_COLUMN
+show_column = [CONTACT_POSITION, CONTACT_POSITION, CONTACT_POSITION, CONTACT_POSITION, CONTACT_POSITION]
 
-#Thanks to Thomas for adjusting this functions from the zhone.
+#GENERAL PURPOSE FUNCTIONS
+def getLastTime(file = TIME_FILE):
+	if not os.path.exists(file):
+		return datetime.fromtimestamp(0)
+	FILE = open(file,'r')
+
+	line = FILE.readline().strip('\n')
+		
+	FILE.close()
+	
+	return datetime.fromtimestamp(float(line))
+	
+def updateLastTime(file = TIME_FILE):
+	FILE = open(file,'w')
+
+	FILE.truncate(0)
+	line = FILE.write(str(time.time()))
+		
+	FILE.close()
+def useOphonekit():
+	return os.path.exists(OPHONEKITD_DB)
+	
+#END OF GENERAL PURPOSE FUNCTIONS
+
+
+#GET/EDIT DATA FUNCTIONS
 def getContact(number):
 	global contacts
 	for contact in contacts:
@@ -93,18 +133,46 @@ def comparePhoneNumber(number1, number2):
 	else:
 		return digits1[-7:] == digits2[-7:]
 def getPhonekitCallsList(type):
+	get_fields = "number, strftime('%s',startTime), direction"
 	if type == "missed":
-		calls = database.execute("SELECT number, strftime('%s',startTime) FROM missed_calls WHERE direction = ? ORDER BY startTime DESC", (CALL_STATUS_INCOMING, )).fetchall()
+		calls = database.execute("SELECT %s FROM missed_calls WHERE direction = ? ORDER BY startTime DESC" % (get_fields, ) , (CALL_STATUS_INCOMING, )).fetchall()
 	elif type == "incoming":
-		calls = database.execute("SELECT number, strftime('%s',startTime) FROM calls WHERE direction = ? AND activeTime IS NOT NULL ORDER BY startTime DESC", (CALL_STATUS_INCOMING, )).fetchall()
+		calls = database.execute("SELECT %s FROM calls WHERE direction = ? AND activeTime IS NOT NULL ORDER BY startTime DESC" % (get_fields, ), (CALL_STATUS_INCOMING, )).fetchall()
 	elif type == "outgoing":
-		calls = database.execute("SELECT number, strftime('%s',startTime) FROM calls WHERE direction = ? ORDER BY startTime DESC", (CALL_STATUS_OUTGOING, )).fetchall()
+		calls = database.execute("SELECT %s FROM calls WHERE direction = ? ORDER BY startTime DESC" % (get_fields, ), (CALL_STATUS_OUTGOING, )).fetchall()
+	elif type == "all":
+		calls = database.execute("SELECT %s FROM calls ORDER BY startTime DESC" % (get_fields, ) ).fetchall()
 	else:
 		return None
 		
 	return calls
 	
-def createCallsTab(list):
+
+#END OF GET/EDIT DATA
+
+#DBUS FUNCTIONS
+def getDbusObject (bus, busname , objectpath , interface):
+	dbusObject = bus.get_object(busname, objectpath)
+	return dbus.Interface(dbusObject, dbus_interface=interface)
+def getPhoneLogObject (bus, busname = PHONELOG_BUSNAME, objectpath = PHONELOG_OBJECTPATH, interface = PHONELOG_INTERFACE):
+	return getDbusObject (bus, busname , objectpath , interface)
+
+def getContactsObject (bus, busname = CONTACTS_BUSNAME, objectpath = CONTACTS_OBJECTPATH, interface = CONTACTS_INTERFACE):
+	return getDbusObject (bus, busname , objectpath , interface)
+
+def getPhoneObject (bus, busname = PHONE_BUSNAME, objectpath = PHONE_OBJECTPATH, interface = PHONE_INTERFACE):
+	return getDbusObject (bus, busname , objectpath , interface)
+	
+#END OF DBUS FUNCTIONS
+
+#GUI INITIALAZATION
+def createListsRenderer():
+	renderer = gtk.CellRendererText()
+	#change text size as well?
+	renderer.set_property('weight', 800)
+
+	return renderer
+def createCallsTab(list, page_index):
 	page = gtk.VBox()
 	page.pack_start( initScrolled(list) )
 	buttons = gtk.HBox()
@@ -114,29 +182,41 @@ def createCallsTab(list):
 	callButton.connect ("clicked", callButton_clicked, list)
 
 	numberButton = gtk.Button("Show Numbers")
-	numberButton.connect ("clicked", numberButton_clicked, list)
+	numberButton.connect ("clicked", numberButton_clicked, list, page_index)
 
 	buttons.pack_start(callButton, True, padding = 1)
 	buttons.pack_start(numberButton, True, padding = 1)
 	
 	return page
-	
-def createList():
+def createListStore():
+	return gtk.TreeView (gtk.TreeStore( gobject.TYPE_STRING, 
+				gobject.TYPE_STRING,
+				gobject.TYPE_STRING,
+				gobject.TYPE_BOOLEAN,  #the boolean is there for coloring
+				gobject.TYPE_STRING ) #should be changed to an icon?
+				)
+def createGeneralList():
+	#the order of the first 4 matters and assumed by createList
+	list = createListStore()
+	list = createList(list)
 
-	list = gtk.TreeView (gtk.TreeStore( gobject.TYPE_STRING,
-			gobject.TYPE_STRING,
-			gobject.TYPE_STRING,
-			gobject.TYPE_BOOLEAN )  #the boolean is there for coloring
-			)
+	renderer = createListsRenderer()
+	column0 = gtk.TreeViewColumn("Status", renderer, text=4, weight_set=3)
+	list.insert_column( column0, STATUS_COLUMN )
+	return list
 	
+def createList(got_list = None):
+
+	if got_list == None:
+		list = createListStore()
+	else:
+		list = got_list
 	
-	renderer = gtk.CellRendererText()
-	renderer.set_property('weight', 800)
+	renderer = createListsRenderer()
+	
 
 	column0 = gtk.TreeViewColumn("Contact", renderer, text=0, weight_set=3)
 	list.insert_column( column0, CONTACT_COLUMN)
-	#column0 = gtk.TreeViewColumn("Number", renderer, text=1, weight_set=3)
-	#list.insert_column( column0, NUMBER_COLUMN )
 	column0 = gtk.TreeViewColumn("Time", renderer, text=2, weight_set=3)
 	list.insert_column( column0, DATE_COLUMN )
 
@@ -157,25 +237,24 @@ def addTab(notebook, tab_content, label):
 	
 	notebook.insert_page(tab_content, tabLabel)
 
-def getDbusObject (bus, busname , objectpath , interface):
-	dbusObject = bus.get_object(busname, objectpath)
-	return dbus.Interface(dbusObject, dbus_interface=interface)
-def getPhoneLogObject (bus, busname = PHONELOG_BUSNAME, objectpath = PHONELOG_OBJECTPATH, interface = PHONELOG_INTERFACE):
-	return getDbusObject (bus, busname , objectpath , interface)
 
-def getContactsObject (bus, busname = CONTACTS_BUSNAME, objectpath = CONTACTS_OBJECTPATH, interface = CONTACTS_INTERFACE):
-	return getDbusObject (bus, busname , objectpath , interface)
-
-def getPhoneObject (bus, busname = PHONE_BUSNAME, objectpath = PHONE_OBJECTPATH, interface = PHONE_INTERFACE):
-	return getDbusObject (bus, busname , objectpath , interface)
-	
-def populateList(list, type, previous_time, visual_flag = False):
+def populateList(list, type, previous_time, visual_flag = False, group_type = 1):
+	"""
+	group_type =
+	0 - never group
+	1/everything else - always group
+	2 - group from the same type only.
+	"""
 	global phoneLog
 
 	if use_ophonekit:
 		calls = getPhonekitCallsList(type)
+		if len(calls) == 0:
+			return False
 	else:	
 		calls = phoneLog.GetCallsList(type)
+		if calls[0][0] == "": #hack because i send dbus empty
+			return False
 	
 	model = list.get_model()
 
@@ -183,57 +262,64 @@ def populateList(list, type, previous_time, visual_flag = False):
 	
 	#add to model
 	for call in calls:
-		if use_ophonekit or (call[0] != ""): #hack because i send dbus empty
-			number = call[0]
-			contact = getContact(number) 
-			call_time = datetime.fromtimestamp( float(call[1]) )
+		number = call[0]
+		contact = getContact(number) 
+		call_time = datetime.fromtimestamp( float(call[1]) )
+		
+		if use_ophonekit:
+			status = call[2]
+		else:
+			status = type
 
-			#check if should be grouped
-			if (last_parent_added != None) and \
-					(((model.get_value(last_parent_added, CONTACT_COLUMN) == contact) \
-						and (contact != "")) \
-					or (model.get_value(last_parent_added, NUMBER_COLUMN) == number)):
-					
+		#handle grouping types
+		sametype_group = False
+		
+		if group_type == 0:
+			#if we don't want to group, change the last_parent_added to None
+			last_parent_added = None
+		elif group_type == 2:
+			sametype_group = True
+			
+		#check if should be grouped
+		parent = None
+		if last_parent_added != None:
+			if (((last_contact == contact) and (contact != "")) \
+					or (last_number == number))\
+				and (not sametype_group or last_status == status):
 				parent = last_parent_added
-			else:
-				parent = None
-
-			#We want the contact to show as the number if it's not in the phonebook.
-			if contact == "":
-				contact = number
-				
-			parent_added = model.append(parent, ( contact , 
-	                        	number ,
-				 	call_time.strftime("%d-%m-%Y %H:%M:%S") ,
-					visual_flag and (call_time > previous_time)
-					)
+			
+		#update the last_statuses
+		last_contact = contact
+		last_number = number
+		last_status = status
+		
+		#We want the contact to show as the number if it's not in the phonebook.
+		if contact == "":
+			contact = number
+		
+		#style status
+		if status == 0:
+			status = "in"
+		elif status == 1:
+			status = "out"
+			
+		elif status == 2: #missed
+			None
+			
+		
+		parent_added = model.append(parent, ( contact , 
+				number ,
+				call_time.strftime("%d-%m-%Y %H:%M:%S") ,
+				visual_flag and (call_time > previous_time) ,
+				status
 				)
+			)
 
-			if parent == None:
-				last_parent_added = parent_added
+		if parent == None:
+			last_parent_added = parent_added
 
-												
-def getLastTime(file = TIME_FILE):
-	if not os.path.exists(file):
-		return datetime.fromtimestamp(0)
-	FILE = open(file,'r')
+	return True										
 
-	line = FILE.readline().strip('\n')
-		
-	FILE.close()
-	
-	return datetime.fromtimestamp(float(line))
-	
-def updateLastTime(file = TIME_FILE):
-	FILE = open(file,'w')
-
-	FILE.truncate(0)
-	line = FILE.write(str(time.time()))
-		
-	FILE.close()
-def useOphonekit():
-	return os.path.exists(OPHONEKITD_DB)
-	
 def createSettingsTab():
 	vbox = gtk.VBox()
 
@@ -256,17 +342,11 @@ def createSettingsTab():
 	return vbox
 
 
-def getSelectedNumber(list):
-	
-	selected = list.get_selection().get_selected_rows()
-	selected = selected[1][0]
 
-	row = list.get_model()[selected]
+#END OF GUI INITIALAZATION
 
-	number = row[NUMBER_COLUMN]
-	return number
-	
-#GTK callbacks:
+#GTK
+#Callbacks
 def settingsErase_clicked (button, list_type):
 	global phoneLog
 	phoneLog.ClearCallsList(list_type)
@@ -281,33 +361,52 @@ def callButton_clicked (button, list):
 		#TODO, once the highlevel api work, change to them.
 		phoneObject.Initiate (number, 'voice')
 	
-def numberButton_clicked (button, list):
+def numberButton_clicked (button, list, page):
 	global show_column
-	
-	contact_column = list.get_column(CONTACT_COLUMN)
-	renderer = contact_column.get_cell_renderers()[0]
-	
 
-	if show_column == CONTACT_COLUMN:
-		show_column = NUMBER_COLUMN
+	#hack, must be a better way to know if it's the general list.
+	if page == PAGE_GENERAL:
+		get_column = CONTACT_COLUMN 
+	else:
+		get_column = CONTACT_COLUMN -1
+
+	contact_column = list.get_column(get_column)
+	renderer = contact_column.get_cell_renderers()[0]
+
+	
+	if show_column[page] == CONTACT_POSITION:
+		show_column[page] = NUMBER_POSITION
 		button_label = "Show Names"
 
 	else:
-		show_column = CONTACT_COLUMN
+		show_column[page] = CONTACT_POSITION
 		button_label = "Show Numbers"
 		
 	button.set_label(button_label)
-	contact_column.set_attributes(renderer, text=show_column)
+	contact_column.set_attributes(renderer, text=show_column[page])
 
 	
 	
-#End of gtk callbacks
+#Data manipulation
+def getSelectedNumber(list):
+	
+	selected = list.get_selection().get_selected_rows()
+	selected = selected[1][0]
+
+	row = list.get_model()[selected]
+
+	number = row[NUMBER_POSITION]
+	return number
+	
+
+
+#End of GTK
 
 systemBus = dbus.SystemBus()
 
 use_ophonekit = useOphonekit()
 
-if not use_ophonekit:
+if not use_ophonekit: 
 	phoneLog = getPhoneLogObject(systemBus)
 else:
 	database = sqlite3.connect(OPHONEKITD_DB)	
@@ -327,25 +426,26 @@ win.add (notebook)
 incomingList = createList()
 outgoingList = createList()
 missedList = createList()
+generalList = createGeneralList()
 
-incomingTab = createCallsTab(incomingList)
-outgoingTab = createCallsTab(outgoingList)
-missedTab = createCallsTab(missedList)
+incomingTab = createCallsTab(incomingList, PAGE_INCOMING)
+outgoingTab = createCallsTab(outgoingList, PAGE_OUTGOING)
+missedTab = createCallsTab(missedList, PAGE_MISSED)
+generalTab = createCallsTab(generalList, PAGE_GENERAL)
 settingsTab = createSettingsTab()
 
 
 addTab(notebook, incomingTab, "Incoming")
 addTab(notebook, outgoingTab, "Outgoing")
 addTab(notebook, missedTab, "Missed")
+addTab(notebook, generalTab, "general")
 #temporary solution:
 if not use_ophonekit:
 	addTab(notebook, settingsTab, "Settings")
 
 win.show_all()
 
-#Set the 3rd page (missed) to start opened
-#Thanks to Thomas des Courieres for the suggestion
-notebook.set_current_page(2)
+notebook.set_current_page(PAGE_MISSED)
 
 #retrieve contacts
 contacts = contactsObject.RetrievePhonebook("contacts")
@@ -354,6 +454,7 @@ last_time = getLastTime()
 populateList(incomingList, "incoming", last_time)
 populateList(outgoingList, "outgoing", last_time)
 populateList(missedList, "missed", last_time, True)
+populateList(generalList, "all", last_time, False, 2)
 
 updateLastTime()
 
