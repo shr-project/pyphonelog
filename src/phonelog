@@ -102,6 +102,7 @@ def updateLastTime(file = TIME_FILE):
 def useOphonekit():
 	return os.path.exists(OPHONEKITD_DB)
 	
+	
 #END OF GENERAL PURPOSE FUNCTIONS
 
 
@@ -261,13 +262,12 @@ def populateList(list, type, previous_time, visual_flag = False, group_type = 1)
 	#add to model
 	for call in calls:
 		number = call[0]
-		contact = getContact(number) 
-		call_time = datetime.fromtimestamp( float(call[1]) )
+		contact = getContact(number)
+		timestamp = float(call[1])
+			
+		call_time = datetime.fromtimestamp( timestamp )
 		
-		if use_ophonekit:
-			status = call[2]
-		else:
-			status = type
+		status = call[2]
 
 		#handle grouping types
 		sametype_group = False
@@ -279,9 +279,12 @@ def populateList(list, type, previous_time, visual_flag = False, group_type = 1)
 			sametype_group = True
 
 			#HACK FOR THE GENERAL LIST
-			missed = (call[3] == None)
-			if missed and  status == 0:
-				status = 2
+			if use_ophonekit:
+				missed = (call[3] == None)
+				if missed and status == 0:
+					status = 2
+			else:
+				missed = (call[2] == 2)
 			
 		#check if should be grouped
 		parent = None
@@ -301,8 +304,6 @@ def populateList(list, type, previous_time, visual_flag = False, group_type = 1)
 		#HACK for the general. MUST CHANGE!!!
 		if sametype_group: 
 			last_missed = missed
-			
-
 
 
 
@@ -452,7 +453,8 @@ settingsTab = createSettingsTab()
 addTab(notebook, incomingTab, "Incoming")
 addTab(notebook, outgoingTab, "Outgoing")
 addTab(notebook, missedTab, "Missed")
-addTab(notebook, generalTab, "general")
+addTab(notebook, generalTab, "General")
+
 #temporary solution:
 if not use_ophonekit:
 	addTab(notebook, settingsTab, "Settings")
