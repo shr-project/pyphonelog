@@ -141,7 +141,7 @@ def getPhonekitCallsList(type):
 	elif type == "outgoing":
 		calls = database.execute("SELECT %s FROM calls WHERE direction = ? ORDER BY startTime DESC" % (get_fields, ), (CALL_STATUS_OUTGOING, )).fetchall()
 	elif type == "all":
-		calls = database.execute("SELECT %s FROM calls ORDER BY startTime DESC" % (get_fields, ) ).fetchall()
+		calls = database.execute("SELECT %s, activeTime FROM calls ORDER BY startTime DESC" % (get_fields, ) ).fetchall()
 	else:
 		return None
 		
@@ -166,12 +166,6 @@ def getPhoneObject (bus, busname = PHONE_BUSNAME, objectpath = PHONE_OBJECTPATH,
 #END OF DBUS FUNCTIONS
 
 #GUI INITIALAZATION
-def createListsRenderer():
-	renderer = gtk.CellRendererText()
-	#change text size as well?
-	renderer.set_property('weight', 800)
-
-	return renderer
 def createCallsTab(list, page_index):
 	page = gtk.VBox()
 	page.pack_start( initScrolled(list) )
@@ -200,8 +194,11 @@ def createGeneralList():
 	list = createListStore()
 	list = createList(list)
 
-	renderer = createListsRenderer()
-	column0 = gtk.TreeViewColumn("Status", renderer, text=4, weight_set=3)
+	renderer = gtk.CellRendererText()
+	renderer.set_property('weight', 800)
+	renderer.set_property('size-points', 8)
+	
+	column0 = gtk.TreeViewColumn("Status", renderer, text=4)
 	list.insert_column( column0, STATUS_COLUMN )
 	return list
 	
@@ -212,8 +209,9 @@ def createList(got_list = None):
 	else:
 		list = got_list
 	
-	renderer = createListsRenderer()
-	
+	renderer = gtk.CellRendererText()
+	#change text size as well?
+	renderer.set_property('weight', 800)
 
 	column0 = gtk.TreeViewColumn("Contact", renderer, text=0, weight_set=3)
 	list.insert_column( column0, CONTACT_COLUMN)
@@ -279,6 +277,11 @@ def populateList(list, type, previous_time, visual_flag = False, group_type = 1)
 			last_parent_added = None
 		elif group_type == 2:
 			sametype_group = True
+
+			#HACK FOR THE GENERAL LIST
+			missed = (call[3] == None)
+			if missed and  status == 0:
+				status = 2
 			
 		#check if should be grouped
 		parent = None
@@ -286,25 +289,34 @@ def populateList(list, type, previous_time, visual_flag = False, group_type = 1)
 			if (((last_contact == contact) and (contact != "")) \
 					or (last_number == number))\
 				and (not sametype_group or last_status == status):
+						
 				parent = last_parent_added
 			
 		#update the last_statuses
 		last_contact = contact
 		last_number = number
 		last_status = status
-		
+
+
+		#HACK for the general. MUST CHANGE!!!
+		if sametype_group: 
+			last_missed = missed
+			
+
+
+
+
 		#We want the contact to show as the number if it's not in the phonebook.
 		if contact == "":
 			contact = number
 		
 		#style status
 		if status == 0:
-			status = "in"
+			status = "↑"
 		elif status == 1:
-			status = "out"
-			
-		elif status == 2: #missed
-			None
+			status = "↓"
+		elif status == 2:
+			status = "↺"
 			
 		
 		parent_added = model.append(parent, ( contact , 
@@ -404,6 +416,7 @@ def getSelectedNumber(list):
 
 systemBus = dbus.SystemBus()
 
+#init db
 use_ophonekit = useOphonekit()
 
 if not use_ophonekit: 
@@ -411,9 +424,11 @@ if not use_ophonekit:
 else:
 	database = sqlite3.connect(OPHONEKITD_DB)	
 
+#init dbus
 contactsObject = getContactsObject(systemBus)
 phoneObject = getPhoneObject(systemBus)
 
+#init gtk
 win = gtk.Window()
 win.connect('delete-event', gtk.main_quit)
 win.set_title("Phone Log")
@@ -421,7 +436,6 @@ win.set_title("Phone Log")
 
 notebook= gtk.Notebook()
 win.add (notebook)
-
 
 incomingList = createList()
 outgoingList = createList()
@@ -456,6 +470,7 @@ populateList(outgoingList, "outgoing", last_time)
 populateList(missedList, "missed", last_time, True)
 populateList(generalList, "all", last_time, False, 2)
 
+#start
 updateLastTime()
 
 gtk.main()
