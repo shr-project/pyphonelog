@@ -500,10 +500,10 @@ generalTab = createCallsTab(generalList, PAGE_GENERAL)
 settingsTab = createSettingsTab()
 
 
-addTab(notebook, incomingTab, "Incoming")
-addTab(notebook, outgoingTab, "Outgoing")
+addTab(notebook, incomingTab, "Received")
+addTab(notebook, outgoingTab, "Made")
 addTab(notebook, missedTab, "Missed")
-addTab(notebook, generalTab, "General")
+addTab(notebook, generalTab, "All")
 
 #temporary solution:
 if not getConfiguration('phonekitd'):
