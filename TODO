@@ -1,4 +1,4 @@
 * add a settings option to limit to X records and/or show only calls after the date x.
 * clear lists only updates the list after a restart of the app. make it an instant change
 * should the user see how many are in the group?
-* settings tab.
+* settings tab. - is it really necessary? (probably yeah)

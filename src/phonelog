@@ -14,7 +14,7 @@ Written by Tom Hacohen.
 Licensed by GPLv2
 """
 
-__version__ = "0.13.0"
+__version__ = "0.14.0"
 
 import dbus
 import gobject, gtk
@@ -22,6 +22,8 @@ from datetime import datetime
 import time
 import os.path
 import sqlite3
+import shutil
+import re
 
 try:
 	import mokoui
@@ -47,7 +49,9 @@ PHONE_BUSNAME = 'org.freesmartphone.ogsmd'
 PHONE_OBJECTPATH = '/org/freesmartphone/GSM/Device'
 PHONE_INTERFACE = 'org.freesmartphone.GSM.Call'
 
-TIME_FILE = "/home/root/.phonelog.dat"
+TIME_FILE = "/home/root/.phonelog/time.dat"
+CONFIGURATION_FILE = "/home/root/.phonelog/phonelog.conf"
+DEMO_CONFIG_PATH = "/usr/share/phonelog/skeleton/phonelog.conf"
 
 #OPHONEKITD related
 OPHONEKITD_DB = "/var/db/phonelog.db"
@@ -56,7 +60,8 @@ CALL_STATUS_OUTGOING = 1
 CALL_STATUS_ACTIVE = 2
 CALL_STATUS_HELD = 3
 CALL_STATUS_RELEASE = 4
-use_ophonekit = True
+
+#use_ophonekitd = True it's now in the config file instead
 
 #POSITION IN MODEL
 CONTACT_POSITION = 0
@@ -76,7 +81,8 @@ PAGE_MISSED = 2
 PAGE_GENERAL = 3
 PAGE_SETTINGS = 4
 
-
+#configuration variable
+configuration = dict()
 # a global used by show number button
 show_column = [CONTACT_POSITION, CONTACT_POSITION, CONTACT_POSITION, CONTACT_POSITION, CONTACT_POSITION]
 
@@ -149,6 +155,48 @@ def getPhonekitCallsList(type):
 	return calls
 	
 
+def setConfiguration(name, value):
+	#a hack for boolean support
+	#also covnert to ints and floats.
+	
+	if value == "False":
+		value = False
+	elif value == "True":
+		value = True
+		
+	configuration[name] = value
+def getConfiguration(name):
+	if name in configuration:
+		return configuration[name]
+	else:
+		return None
+def initConfiguration(file):
+	"""
+	Reads the signal list from the file given as parameter
+	(to launch, interface, busname, path, signal, rules) from to_launch=interface;busname;path;signal;rule1,rule2...
+	"""
+	if not os.path.exists(file):
+		shutil.copy(DEMO_CONFIG_PATH, file)
+		
+	regex = re.compile('^\s*([^=\s]*)\s*=\s*(.*)\s*\n$')
+	comment_regex = re.compile('^\s*#')
+	FILE = open(file,'r')
+
+	print "Using configuration:"
+	print "*********************"
+	for line in FILE:
+		if not comment_regex.match(line):
+			parsed = regex.match(line)
+			#ignore bad config lines
+			if parsed != None:
+				print line
+				setConfiguration(parsed.group(1), parsed.group(2))
+	print "*********************"
+	print "End of used configuration"
+		
+	FILE.close()
+	
+	return True
 #END OF GET/EDIT DATA
 
 #DBUS FUNCTIONS
@@ -246,14 +294,17 @@ def populateList(list, type, previous_time, visual_flag = False, group_type = 1)
 	"""
 	global phoneLog
 
-	if use_ophonekit:
+	if getConfiguration('phonekitd'):
 		calls = getPhonekitCallsList(type)
 		if len(calls) == 0:
 			return False
 	else:	
 		calls = phoneLog.GetCallsList(type)
-		if calls[0][0] == "": #hack because i send dbus empty
+		try: #hack because i send dbus empty
+   			calls[0]
+ 		except:
 			return False
+
 	
 	model = list.get_model()
 
@@ -263,23 +314,19 @@ def populateList(list, type, previous_time, visual_flag = False, group_type = 1)
 	for call in calls:
 		number = call[0]
 		contact = getContact(number)
-		timestamp = float(call[1])
-			
+		timestamp = float(call[1])	
 		call_time = datetime.fromtimestamp( timestamp )
-		
 		status = call[2]
 
 		#handle grouping types
 		sametype_group = False
-		
 		if group_type == 0:
 			#if we don't want to group, change the last_parent_added to None
 			last_parent_added = None
 		elif group_type == 2:
 			sametype_group = True
-
 			#HACK FOR THE GENERAL LIST
-			if use_ophonekit:
+			if getConfiguration('phonekitd'):
 				missed = (call[3] == None)
 				if missed and status == 0:
 					status = 2
@@ -304,8 +351,6 @@ def populateList(list, type, previous_time, visual_flag = False, group_type = 1)
 		#HACK for the general. MUST CHANGE!!!
 		if sametype_group: 
 			last_missed = missed
-
-
 
 		#We want the contact to show as the number if it's not in the phonebook.
 		if contact == "":
@@ -416,14 +461,19 @@ def getSelectedNumber(list):
 #End of GTK
 
 systemBus = dbus.SystemBus()
+initConfiguration(CONFIGURATION_FILE)
 
 #init db
-use_ophonekit = useOphonekit()
 
-if not use_ophonekit: 
-	phoneLog = getPhoneLogObject(systemBus)
-else:
+if getConfiguration('phonekitd'):
+	if not os.path.exists(OPHONEKITD_DB):
+		print "Can't Find " + OPHONEKITD_DB + " Falling back to the daemon"
+		phoneLog = getPhoneLogObject(systemBus)
+		setConfiguration('phonekitd', False)
 	database = sqlite3.connect(OPHONEKITD_DB)	
+else:
+	phoneLog = getPhoneLogObject(systemBus)
+	
 
 #init dbus
 contactsObject = getContactsObject(systemBus)
@@ -456,7 +506,7 @@ addTab(notebook, missedTab, "Missed")
 addTab(notebook, generalTab, "General")
 
 #temporary solution:
-if not use_ophonekit:
+if not getConfiguration('phonekitd'):
 	addTab(notebook, settingsTab, "Settings")
 
 win.show_all()
@@ -477,5 +527,5 @@ updateLastTime()
 
 gtk.main()
 
-if use_ophonekit:
+if getConfiguration('phonekitd'):
 	database.close()
