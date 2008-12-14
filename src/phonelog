@@ -45,8 +45,9 @@ PHONE_BUSNAME = 'org.freesmartphone.ogsmd'
 PHONE_OBJECTPATH = '/org/freesmartphone/GSM/Device'
 PHONE_INTERFACE = 'org.freesmartphone.GSM.Call'
 
-TIME_FILE = "/home/root/.phonelog/time.dat"
-CONFIGURATION_FILE = "/home/root/.phonelog/phonelog.conf"
+CONFIGURATION_DIR = "/home/root/.phonelog/"
+TIME_FILE = CONFIGURATION_DIR + "time.dat"
+CONFIGURATION_FILE = CONFIGURATION_DIR + "phonelog.conf"
 DEMO_CONFIG_PATH = "/usr/share/phonelog/skeleton/phonelog.conf"
 
 #OPHONEKITD related
@@ -523,6 +524,9 @@ def settingsErase_clicked (button, list_type):
 #Data manipulation
 #End of GTK
 
+#create the config dir if doesn't exist.
+if not os.path.exists(CONFIGURATION_DIR):
+	os.mkdir(CONFIGURATION_DIR)
 
 systemBus = dbus.SystemBus()
 config = Configuration(CONFIGURATION_FILE)
