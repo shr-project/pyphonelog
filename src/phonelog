@@ -2,14 +2,10 @@
 # -*- coding: UTF-8 -*-
 
 """
-A sample gtk application used to demonstrate the
-use of the phonelogd dbus interface and to have
-a working frontend for the purpose.
-The bindings might have some minor changes 
-(like moving from a 2d array to an array of dictionaries)
-though the main idea should be the same.
+This is a phonelog GTK+ GUI, designed to use with a custom daemon,
+the SHR daemon, and when ready, opimd.
 
-Written by Tom Hacohen.
+Written by Tom Hacohen. (tom@stosb.com)
 
 Licensed by GPLv2
 """
@@ -109,18 +105,19 @@ def useOphonekit():
 	return os.path.exists(OPHONEKITD_DB)
 	
 	
+def stringToTabNumber(string):
+	if string.lower() == "received":
+		return PAGE_INCOMING
+	elif string.lower() == "made":
+		return PAGE_OUTGOING
+	elif string.lower() == "missed":
+		return PAGE_MISSED
+	elif string.lower() == "general":
+		return PAGE_GENERAL
 #END OF GENERAL PURPOSE FUNCTIONS
 
 
 #GET/EDIT DATA FUNCTIONS
-def setDefaultConfiguration():
-	configuration['phonekitd'] = True
-	configuration['incoming_limit'] = 50
-	configuration['outgoing_limit'] = 50
-	configuration['missed_limit'] = 50
-	configuration['general_limit'] = 50
-
-	return
 def getContact(number):
 	global contacts
 	for contact in contacts:
@@ -151,13 +148,17 @@ def comparePhoneNumber(number1, number2):
 def getPhonekitCallsList(type):
 	get_fields = "number, strftime('%s',startTime), direction"
 	if type == "missed":
-		calls = database.execute("SELECT %s FROM missed_calls WHERE direction = ? ORDER BY startTime DESC LIMIT ?" % (get_fields, getConfiguration('missed_limit') ) , (CALL_STATUS_INCOMING, )).fetchall()
+		calls = database.execute("SELECT %s FROM missed_calls WHERE direction = ? ORDER BY startTime DESC LIMIT ?" % (get_fields,  ) ,\
+			(CALL_STATUS_INCOMING, getConfiguration('missed_limit'))).fetchall()
 	elif type == "incoming":
-		calls = database.execute("SELECT %s FROM calls WHERE direction = ? AND activeTime IS NOT NULL ORDER BY startTime DESC LIMIT ?" % (get_fields, getConfiguration('incoming_limit')), (CALL_STATUS_INCOMING, )).fetchall()
+		calls = database.execute("SELECT %s FROM calls WHERE direction = ? AND activeTime IS NOT NULL ORDER BY startTime DESC LIMIT ?" % (get_fields, ), \
+		(CALL_STATUS_INCOMING, getConfiguration('received_limit'))).fetchall()
 	elif type == "outgoing":
-		calls = database.execute("SELECT %s FROM calls WHERE direction = ? ORDER BY startTime DESC LIMIT ?" % (get_fields, ), (CALL_STATUS_OUTGOING, getConfiguration('outgoing_limit'))).fetchall()
+		calls = database.execute("SELECT %s FROM calls WHERE direction = ? ORDER BY startTime DESC LIMIT ?" % (get_fields, ), \
+			(CALL_STATUS_OUTGOING, getConfiguration('made_limit'))).fetchall()
 	elif type == "all":
-		calls = database.execute("SELECT %s, activeTime FROM calls ORDER BY startTime DESC LIMIT ?" % (get_fields, getConfiguration('general_limit')) ).fetchall()
+		calls = database.execute("SELECT %s, activeTime FROM calls ORDER BY startTime DESC LIMIT ?" % (get_fields, ), \
+			(getConfiguration('general_limit'),) ).fetchall()
 	else:
 		return None
 		
@@ -179,15 +180,32 @@ def extractNumeric(string):
 	else:
 		return None
 
+def setDefaultConfiguration():
+	setConfigurationRaw('phonekitd', True)
+	setConfigurationRaw('received_limit', 50)
+	setConfigurationRaw('made_limit', 50)
+	setConfigurationRaw('missed_limit', 50)
+	setConfigurationRaw('general_limit', 50)
+	setConfigurationRaw('received_tab_name', "Received")
+	setConfigurationRaw('made_tab_name', "Made")
+	setConfigurationRaw('missed_tab_name', "Missed")
+	setConfigurationRaw('general_tab_name', "General")
+	setConfigurationRaw('startup_tab', "missed")
+	return
+def setConfigurationRaw(name, value):
+	configuration[name] = value
 def setConfiguration(name, value):
 	boolean_value = extractBoolean(value)
 	if boolean_value != None:
-		configuration[name] = boolean_value
+		setConfigurationRaw(name, boolean_value)
 		return
 
 	numeric_value = extractNumeric(value)
 	if numeric_value != None:
-		configuration[name] = numeric_value
+		setConfigurationRaw(name, numeric_value)
+		return
+	else:
+		setConfigurationRaw(name, value)
 		return
 def getConfiguration(name):
 	if name in configuration:
@@ -526,11 +544,10 @@ missedTab = createCallsTab(missedList, PAGE_MISSED)
 generalTab = createCallsTab(generalList, PAGE_GENERAL)
 settingsTab = createSettingsTab()
 
-
-addTab(notebook, incomingTab, "Received")
-addTab(notebook, outgoingTab, "Made")
-addTab(notebook, missedTab, "Missed")
-addTab(notebook, generalTab, "All")
+addTab(notebook, incomingTab, getConfiguration('received_tab_name'))
+addTab(notebook, outgoingTab, getConfiguration('made_tab_name'))
+addTab(notebook, missedTab, getConfiguration('missed_tab_name'))
+addTab(notebook, generalTab, getConfiguration('general_tab_name'))
 
 #temporary solution:
 if not getConfiguration('phonekitd'):
@@ -538,7 +555,8 @@ if not getConfiguration('phonekitd'):
 
 win.show_all()
 
-notebook.set_current_page(PAGE_MISSED)
+startup_page = stringToTabNumber( getConfiguration('startup_tab') )
+notebook.set_current_page(startup_page)
 
 #retrieve contacts
 contacts = contactsObject.RetrievePhonebook("contacts")
