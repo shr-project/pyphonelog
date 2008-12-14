@@ -16,7 +16,10 @@ setup(name='pyphonelog',
             'Programming Language :: Python',
             'Topic :: System',
             ],
-        data_files=[('share/applications', ['data/applications/phonelog.desktop']),
-                    ('share/phonelog/skeleton', ['data/config/phonelog.conf'])],
-        scripts = ['src/phonelog']
+	scripts = ['src/phonelog'],
+	data_files= [
+		('applications', ['data/applications/phonelog.desktop']),
+		('phonelog/skeleton', ['data/config/phonelog.conf'])
+	]
+        
      )
