@@ -514,7 +514,7 @@ if getConfiguration('phonekitd'):
 	if not os.path.exists(OPHONEKITD_DB):
 		print "Can't Find " + OPHONEKITD_DB + " Falling back to the daemon"
 		phoneLog = getPhoneLogObject(systemBus)
-		setConfiguration('phonekitd', False)
+		setConfiguration('phonekitd', "False")
 	database = sqlite3.connect(OPHONEKITD_DB)	
 else:
 	phoneLog = getPhoneLogObject(systemBus)
