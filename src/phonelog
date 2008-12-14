@@ -139,6 +139,7 @@ def comparePhoneNumber(number1, number2):
 		return digits1 == digits2
 	else:
 		return digits1[-7:] == digits2[-7:]
+		
 def getPhonekitCallsList(type):
 	get_fields = "number, strftime('%s',startTime), direction"
 	if type == "missed":
@@ -154,17 +155,32 @@ def getPhonekitCallsList(type):
 		
 	return calls
 	
+def extractBoolean(string):
+	low_case = string.lower()
+	if low_case == "false":
+		return False
+	elif low_case == "true":
+		return True
+	else:
+		return None
+def extractNumeric(string):
+	if re.match('^\d+$',string):
+		return int(string)
+	elif re.match('^\d+.?\d*$',string):
+		return float(string)
+	else:
+		return None
 
 def setConfiguration(name, value):
-	#a hack for boolean support
-	#also covnert to ints and floats.
-	
-	if value == "False":
-		value = False
-	elif value == "True":
-		value = True
-		
-	configuration[name] = value
+	boolean_value = extractBoolean(value)
+	if boolean_value != None:
+		configuration[name] = boolean_value
+		return
+
+	numeric_value = extractNumeric(value)
+	if numeric_value != None:
+		configuration[name] = numeric_value
+		return
 def getConfiguration(name):
 	if name in configuration:
 		return configuration[name]
@@ -459,6 +475,7 @@ def getSelectedNumber(list):
 
 
 #End of GTK
+
 
 systemBus = dbus.SystemBus()
 initConfiguration(CONFIGURATION_FILE)
