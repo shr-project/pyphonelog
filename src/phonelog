@@ -10,7 +10,7 @@ Written by Tom Hacohen. (tom@stosb.com)
 Licensed by GPLv2
 """
 
-__version__ = "0.14.0"
+__version__ = "0.15.1"
 
 import dbus
 import gobject, gtk
@@ -57,29 +57,12 @@ CALL_STATUS_ACTIVE = 2
 CALL_STATUS_HELD = 3
 CALL_STATUS_RELEASE = 4
 
-#use_ophonekitd = True it's now in the config file instead
-
-#POSITION IN MODEL
-CONTACT_POSITION = 0
-NUMBER_POSITION = 1
-DATE_POSITION = 2
-STATUS_POSITION = 4
-
-#ACTUAL GUI POSTITON
-CONTACT_COLUMN = 1
-DATE_COLUMN = 2
-STATUS_COLUMN = 0
-
 #PAGES POSITIONS
 PAGE_INCOMING = 0 
 PAGE_OUTGOING = 1
 PAGE_MISSED = 2
 PAGE_GENERAL = 3
 PAGE_SETTINGS = 4
-
-# a global used by show number button
-show_column = [CONTACT_POSITION, CONTACT_POSITION, CONTACT_POSITION, CONTACT_POSITION, CONTACT_POSITION]
-
 
 class Configuration:
 	__configuration = dict()
@@ -160,6 +143,244 @@ class Configuration:
 			return None
 
 
+
+class CallsTab:
+	#POSITION IN MODEL
+	CONTACT_POSITION = 0
+	NUMBER_POSITION = 1
+	DATE_POSITION = 2
+	STATUS_POSITION = 4
+
+	#ACTUAL GUI POSTITON
+	CONTACT_COLUMN = 0
+	DATE_COLUMN = 1
+	__list = None
+	__show_column = CONTACT_POSITION
+	__tab = None
+	__type = None
+	
+	def __init__(self, type):
+		self.createList()
+		self.__type = type
+		self.__createCallsTab()
+
+	def getList(self):
+		return self.__list
+
+	def getTab(self):
+		return self.__tab
+	def __getContactColumn(self):
+		return self.CONTACT_COLUMN
+	def __getDateColumn(self):
+		return self.DATE_COLUMN
+	def __createCallsTab(self):
+		page = gtk.VBox()
+		page.pack_start( self.__initScrolled() )
+		buttons = gtk.HBox()
+		page.pack_start(buttons, False, padding = 1)
+
+		callButton = gtk.Button("Call")
+		callButton.connect ("clicked", self.callButton_clicked)
+
+		numberButton = gtk.Button("Show Numbers")
+		numberButton.connect ("clicked", self.numberButton_clicked)
+
+		buttons.pack_start(callButton, True, padding = 1)
+		buttons.pack_start(numberButton, True, padding = 1)
+		
+		self.__tab = page
+	def __createTreeView(self):
+		self.__list = gtk.TreeView (gtk.TreeStore( gobject.TYPE_STRING, 
+					gobject.TYPE_STRING,
+					gobject.TYPE_STRING,
+					gobject.TYPE_BOOLEAN,  #the boolean is there for coloring
+					gobject.TYPE_STRING ) #should be changed to an icon?
+					)
+	def createList(self):
+
+		self.__createTreeView()
+			
+		renderer = gtk.CellRendererText()
+		#change text size as well?
+		renderer.set_property('weight', 800)
+
+		column0 = gtk.TreeViewColumn("Contact", renderer, text=0, weight_set=3)
+		self.__list.insert_column( column0, self.__getContactColumn() )
+		column0 = gtk.TreeViewColumn("Time", renderer, text=2, weight_set=3)
+		self.__list.insert_column( column0, self.__getDateColumn())
+		
+	def __initScrolled(self):
+		tab_content = self.__list
+		if use_mokoui:
+			scrolled = mokoui.FingerScroll()
+		else:
+			scrolled = gtk.ScrolledWindow()
+			scrolled.set_policy(gtk.POLICY_NEVER, gtk.POLICY_AUTOMATIC)
+
+		scrolled.add_with_viewport(tab_content)
+		return scrolled
+		
+	def populateList(self, previous_time, visual_flag = False, group_type = 1):
+		"""
+		group_type =
+		0 - never group
+		1/everything else - always group
+		2 - group from the same type only.
+		"""
+		global phoneLog
+		list = self.__list
+		type = self.__type
+		
+		if config.get('phonekitd'):
+			calls = getPhonekitCallsList(type)
+			if len(calls) == 0:
+				return False
+		else:	
+			calls = phoneLog.GetCallsList(type)
+			try: #hack because i send dbus empty
+				calls[0]
+			except:
+				return False
+
+		
+		model = list.get_model()
+
+		last_parent_added = None
+		
+		#add to model
+		for call in calls:
+			number = call[0]
+			contact = getContact(number)
+			timestamp = float(call[1])	
+			call_time = datetime.fromtimestamp( timestamp )
+			status = call[2]
+
+			#handle grouping types
+			sametype_group = False
+			if group_type == 0:
+				#if we don't want to group, change the last_parent_added to None
+				last_parent_added = None
+			elif group_type == 2:
+				sametype_group = True
+				#HACK FOR THE GENERAL LIST
+				if config.get('phonekitd'):
+					missed = (call[3] == None)
+					if missed and status == 0:
+						status = 2
+				else:
+					missed = (call[2] == 2)
+				
+			#check if should be grouped
+			parent = None
+			if last_parent_added != None:
+				if (((last_contact == contact) and (contact != "")) \
+						or (last_number == number))\
+					and (not sametype_group or last_status == status):
+							
+					parent = last_parent_added
+				
+			#update the last_statuses
+			last_contact = contact
+			last_number = number
+			last_status = status
+
+
+			#HACK for the general. MUST CHANGE!!!
+			if sametype_group: 
+				last_missed = missed
+
+			#We want the contact to show as the number if it's not in the phonebook.
+			if contact == "":
+				contact = number
+			
+			#style status
+			if status == 0:
+				status = "↓"
+			elif status == 1:
+				status = "↑"
+			elif status == 2:
+				status = "↺"
+				
+			
+			parent_added = model.append(parent, ( contact , 
+					number ,
+					call_time.strftime("%d-%m-%Y %H:%M:%S") ,
+					visual_flag and (call_time > previous_time) ,
+					status
+					)
+				)
+
+			if parent == None:
+				last_parent_added = parent_added
+
+		return True										
+
+
+	def callButton_clicked (self, button):
+		global phoneObject
+		list = self.__list
+		
+		number = self.__getSelectedNumber()
+		
+		if number != None:
+			#TODO, once the highlevel api work, change to them.
+			phoneObject.Initiate (number, 'voice')
+		
+	def numberButton_clicked (self, button):
+		list = self.__list
+
+		get_column = self.__getContactColumn()
+
+		contact_column = list.get_column(get_column)
+		renderer = contact_column.get_cell_renderers()[0]
+
+		
+		if self.__show_column == self.CONTACT_POSITION:
+			self.__show_column = self.NUMBER_POSITION
+			button_label = "Show Names"
+
+		else:
+			self.__show_column = self.CONTACT_POSITION
+			button_label = "Show Numbers"
+			
+		button.set_label(button_label)
+		contact_column.set_attributes(renderer, text=self.__show_column)
+
+		
+		
+	def __getSelectedNumber(self):
+		list = self.__list
+		selected = list.get_selection().get_selected_rows()
+		selected = selected[1][0]
+
+		row = list.get_model()[selected]
+
+		number = row[self.NUMBER_POSITION]
+		return number
+
+class GeneralTab (CallsTab):
+	#ACTUAL GUI POSTITON
+	STATUS_COLUMN = 0	
+	CONTACT_COLUMN = 1
+	DATE_COLUMN = 2
+	def __init__(self, type):
+		self.createList()
+		CallsTab.__init__(self, type)
+	def __getStatusColumn(self):
+		return self.STATUS_COLUMN
+		
+	def createList(self):
+		CallsTab.createList(self)
+		
+		renderer = gtk.CellRendererText()
+		renderer.set_property('weight', 800)
+		renderer.set_property('size-points', 8)
+		
+		column0 = gtk.TreeViewColumn("Status", renderer, text=4)
+		list = self.getList()
+		list.insert_column( column0, self.__getStatusColumn() )
+	
+	
 
 #GENERAL PURPOSE FUNCTIONS
 def getLastTime(file = TIME_FILE):
@@ -262,168 +483,10 @@ def getPhoneObject (bus, busname = PHONE_BUSNAME, objectpath = PHONE_OBJECTPATH,
 #END OF DBUS FUNCTIONS
 
 #GUI INITIALAZATION
-def createCallsTab(list, page_index):
-	page = gtk.VBox()
-	page.pack_start( initScrolled(list) )
-	buttons = gtk.HBox()
-	page.pack_start(buttons, False, padding = 1)
-
-	callButton = gtk.Button("Call")
-	callButton.connect ("clicked", callButton_clicked, list)
-
-	numberButton = gtk.Button("Show Numbers")
-	numberButton.connect ("clicked", numberButton_clicked, list, page_index)
-
-	buttons.pack_start(callButton, True, padding = 1)
-	buttons.pack_start(numberButton, True, padding = 1)
-	
-	return page
-def createListStore():
-	return gtk.TreeView (gtk.TreeStore( gobject.TYPE_STRING, 
-				gobject.TYPE_STRING,
-				gobject.TYPE_STRING,
-				gobject.TYPE_BOOLEAN,  #the boolean is there for coloring
-				gobject.TYPE_STRING ) #should be changed to an icon?
-				)
-def createGeneralList():
-	#the order of the first 4 matters and assumed by createList
-	list = createListStore()
-	list = createList(list)
-
-	renderer = gtk.CellRendererText()
-	renderer.set_property('weight', 800)
-	renderer.set_property('size-points', 8)
-	
-	column0 = gtk.TreeViewColumn("Status", renderer, text=4)
-	list.insert_column( column0, STATUS_COLUMN )
-	return list
-	
-def createList(got_list = None):
-
-	if got_list == None:
-		list = createListStore()
-	else:
-		list = got_list
-	
-	renderer = gtk.CellRendererText()
-	#change text size as well?
-	renderer.set_property('weight', 800)
-
-	column0 = gtk.TreeViewColumn("Contact", renderer, text=0, weight_set=3)
-	list.insert_column( column0, CONTACT_COLUMN)
-	column0 = gtk.TreeViewColumn("Time", renderer, text=2, weight_set=3)
-	list.insert_column( column0, DATE_COLUMN )
-
-	return list
-	
-def initScrolled(tab_content):
-	if use_mokoui:
-		scrolled = mokoui.FingerScroll()
-	else:
-		scrolled = gtk.ScrolledWindow()
-		scrolled.set_policy(gtk.POLICY_NEVER, gtk.POLICY_AUTOMATIC)
-
-	scrolled.add_with_viewport(tab_content)
-	return scrolled
-	
 def addTab(notebook, tab_content, label):
 	tabLabel = gtk.Label(label )
 	
 	notebook.insert_page(tab_content, tabLabel)
-
-
-def populateList(list, type, previous_time, visual_flag = False, group_type = 1):
-	"""
-	group_type =
-	0 - never group
-	1/everything else - always group
-	2 - group from the same type only.
-	"""
-	global phoneLog
-
-	if config.get('phonekitd'):
-		calls = getPhonekitCallsList(type)
-		if len(calls) == 0:
-			return False
-	else:	
-		calls = phoneLog.GetCallsList(type)
-		try: #hack because i send dbus empty
-   			calls[0]
- 		except:
-			return False
-
-	
-	model = list.get_model()
-
-	last_parent_added = None
-	
-	#add to model
-	for call in calls:
-		number = call[0]
-		contact = getContact(number)
-		timestamp = float(call[1])	
-		call_time = datetime.fromtimestamp( timestamp )
-		status = call[2]
-
-		#handle grouping types
-		sametype_group = False
-		if group_type == 0:
-			#if we don't want to group, change the last_parent_added to None
-			last_parent_added = None
-		elif group_type == 2:
-			sametype_group = True
-			#HACK FOR THE GENERAL LIST
-			if config.get('phonekitd'):
-				missed = (call[3] == None)
-				if missed and status == 0:
-					status = 2
-			else:
-				missed = (call[2] == 2)
-			
-		#check if should be grouped
-		parent = None
-		if last_parent_added != None:
-			if (((last_contact == contact) and (contact != "")) \
-					or (last_number == number))\
-				and (not sametype_group or last_status == status):
-						
-				parent = last_parent_added
-			
-		#update the last_statuses
-		last_contact = contact
-		last_number = number
-		last_status = status
-
-
-		#HACK for the general. MUST CHANGE!!!
-		if sametype_group: 
-			last_missed = missed
-
-		#We want the contact to show as the number if it's not in the phonebook.
-		if contact == "":
-			contact = number
-		
-		#style status
-		if status == 0:
-			status = "↑"
-		elif status == 1:
-			status = "↓"
-		elif status == 2:
-			status = "↺"
-			
-		
-		parent_added = model.append(parent, ( contact , 
-				number ,
-				call_time.strftime("%d-%m-%Y %H:%M:%S") ,
-				visual_flag and (call_time > previous_time) ,
-				status
-				)
-			)
-
-		if parent == None:
-			last_parent_added = parent_added
-
-	return True										
 
 def createSettingsTab():
 	vbox = gtk.VBox()
@@ -457,54 +520,7 @@ def settingsErase_clicked (button, list_type):
 	phoneLog.ClearCallsList(list_type)
 
 
-def callButton_clicked (button, list):
-	global phoneObject
-	
-	number = getSelectedNumber(list)
-	
-	if number != None:
-		#TODO, once the highlevel api work, change to them.
-		phoneObject.Initiate (number, 'voice')
-	
-def numberButton_clicked (button, list, page):
-	global show_column
-
-	#hack, must be a better way to know if it's the general list.
-	if page == PAGE_GENERAL:
-		get_column = CONTACT_COLUMN 
-	else:
-		get_column = CONTACT_COLUMN -1
-
-	contact_column = list.get_column(get_column)
-	renderer = contact_column.get_cell_renderers()[0]
-
-	
-	if show_column[page] == CONTACT_POSITION:
-		show_column[page] = NUMBER_POSITION
-		button_label = "Show Names"
-
-	else:
-		show_column[page] = CONTACT_POSITION
-		button_label = "Show Numbers"
-		
-	button.set_label(button_label)
-	contact_column.set_attributes(renderer, text=show_column[page])
-
-	
-	
 #Data manipulation
-def getSelectedNumber(list):
-	
-	selected = list.get_selection().get_selected_rows()
-	selected = selected[1][0]
-
-	row = list.get_model()[selected]
-
-	number = row[NUMBER_POSITION]
-	return number
-	
-
-
 #End of GTK
 
 
@@ -536,21 +552,19 @@ win.set_title("Phone Log")
 notebook= gtk.Notebook()
 win.add (notebook)
 
-incomingList = createList()
-outgoingList = createList()
-missedList = createList()
-generalList = createGeneralList()
+incoming = CallsTab('incoming')
+outgoing = CallsTab('outgoing')
+missed = CallsTab('missed')
+general = GeneralTab("all") # = createGeneralList()
 
-incomingTab = createCallsTab(incomingList, PAGE_INCOMING)
-outgoingTab = createCallsTab(outgoingList, PAGE_OUTGOING)
-missedTab = createCallsTab(missedList, PAGE_MISSED)
-generalTab = createCallsTab(generalList, PAGE_GENERAL)
+
+#generalTab = createCallsTab(generalList, PAGE_GENERAL)
 settingsTab = createSettingsTab()
 
-addTab(notebook, incomingTab, config.get('received_tab_name'))
-addTab(notebook, outgoingTab, config.get('made_tab_name'))
-addTab(notebook, missedTab, config.get('missed_tab_name'))
-addTab(notebook, generalTab, config.get('general_tab_name'))
+addTab(notebook, incoming.getTab(), config.get('received_tab_name'))
+addTab(notebook, outgoing.getTab(), config.get('made_tab_name'))
+addTab(notebook, missed.getTab(), config.get('missed_tab_name'))
+addTab(notebook, general.getTab(), config.get('general_tab_name'))
 
 #temporary solution:
 if not config.get('phonekitd'):
@@ -565,10 +579,10 @@ notebook.set_current_page(startup_page)
 contacts = contactsObject.RetrievePhonebook("contacts")
 
 last_time = getLastTime()
-populateList(incomingList, "incoming", last_time)
-populateList(outgoingList, "outgoing", last_time)
-populateList(missedList, "missed", last_time, True)
-populateList(generalList, "all", last_time, False, 2)
+incoming.populateList(last_time)
+outgoing.populateList(last_time)
+missed.populateList(last_time,True)
+general.populateList(last_time,False, 2)
 
 #start
 updateLastTime()
