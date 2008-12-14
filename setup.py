@@ -16,8 +16,6 @@ setup(name='pyphonelog',
             'Programming Language :: Python',
             'Topic :: System',
             ],
-        #package_dir= {'pyphonelog':'./'},
-        #packages=['pyphonelog'],
         data_files=[('share/applications', ['data/applications/phonelog.desktop']),
                     ('share/phonelog/skeleton', ['data/config/phonelog.conf'])],
         scripts = ['src/phonelog']

@@ -77,10 +77,89 @@ PAGE_MISSED = 2
 PAGE_GENERAL = 3
 PAGE_SETTINGS = 4
 
-#configuration variable
-configuration = dict()
 # a global used by show number button
 show_column = [CONTACT_POSITION, CONTACT_POSITION, CONTACT_POSITION, CONTACT_POSITION, CONTACT_POSITION]
+
+
+class Configuration:
+	__configuration = dict()
+	def __init__(self, file):
+		"""
+		Reads the signal list from the file given as parameter
+		(to launch, interface, busname, path, signal, rules) from to_launch=interface;busname;path;signal;rule1,rule2...
+		"""
+		self.setDefault()
+		
+		if not os.path.exists(file):
+			shutil.copy(DEMO_CONFIG_PATH, file)
+			
+		regex = re.compile('^\s*([^=\s]*)\s*=\s*(.*)\s*\n$')
+		comment_regex = re.compile('^\s*#')
+		FILE = open(file,'r')
+
+		print "Using configuration:"
+		print "*********************"
+		for line in FILE:
+			if not comment_regex.match(line):
+				parsed = regex.match(line)
+				#ignore bad config lines
+				if parsed != None:
+					print line
+					self.set(parsed.group(1), parsed.group(2))
+		print "*********************"
+		print "End of configuration"
+			
+		FILE.close()
+
+	def setDirect(self, name, value):
+		self.__configuration[name] = value
+	def set(self, name, string):
+		boolean_value = self.__extractBoolean(string)
+		if boolean_value != None:
+			self.setDirect(name, boolean_value)
+			return
+
+		numeric_value = self.__extractNumeric(string)
+		if numeric_value != None:
+			self.setDirect(name, numeric_value)
+			return
+		else:
+			self.setDirect(name, string)
+			return
+	def get(self, name):
+		if name in self.__configuration:
+			return self.__configuration[name]
+		else:
+			return None
+	def setDefault(self):
+		self.setDirect('phonekitd', True)
+		self.setDirect('received_limit', 50)
+		self.setDirect('made_limit', 50)
+		self.setDirect('missed_limit', 50)
+		self.setDirect('general_limit', 50)
+		self.setDirect('received_tab_name', "Received")
+		self.setDirect('made_tab_name', "Made")
+		self.setDirect('missed_tab_name', "Missed")
+		self.setDirect('general_tab_name', "General")
+		self.setDirect('startup_tab', "missed")
+		return
+	def __extractBoolean(self, string):
+		low_case = string.lower()
+		if low_case == "false":
+			return False
+		elif low_case == "true":
+			return True
+		else:
+			return None
+	def __extractNumeric(self, string):
+		if re.match('^\d+$',string):
+			return int(string)
+		elif re.match('^\d+.?\d*$',string):
+			return float(string)
+		else:
+			return None
+
+
 
 #GENERAL PURPOSE FUNCTIONS
 def getLastTime(file = TIME_FILE):
@@ -149,98 +228,22 @@ def getPhonekitCallsList(type):
 	get_fields = "number, strftime('%s',startTime), direction"
 	if type == "missed":
 		calls = database.execute("SELECT %s FROM missed_calls WHERE direction = ? ORDER BY startTime DESC LIMIT ?" % (get_fields,  ) ,\
-			(CALL_STATUS_INCOMING, getConfiguration('missed_limit'))).fetchall()
+			(CALL_STATUS_INCOMING, config.get('missed_limit'))).fetchall()
 	elif type == "incoming":
 		calls = database.execute("SELECT %s FROM calls WHERE direction = ? AND activeTime IS NOT NULL ORDER BY startTime DESC LIMIT ?" % (get_fields, ), \
-		(CALL_STATUS_INCOMING, getConfiguration('received_limit'))).fetchall()
+		(CALL_STATUS_INCOMING, config.get('received_limit'))).fetchall()
 	elif type == "outgoing":
 		calls = database.execute("SELECT %s FROM calls WHERE direction = ? ORDER BY startTime DESC LIMIT ?" % (get_fields, ), \
-			(CALL_STATUS_OUTGOING, getConfiguration('made_limit'))).fetchall()
+			(CALL_STATUS_OUTGOING, config.get('made_limit'))).fetchall()
 	elif type == "all":
 		calls = database.execute("SELECT %s, activeTime FROM calls ORDER BY startTime DESC LIMIT ?" % (get_fields, ), \
-			(getConfiguration('general_limit'),) ).fetchall()
+			(config.get('general_limit'),) ).fetchall()
 	else:
 		return None
 		
 	return calls
 	
-def extractBoolean(string):
-	low_case = string.lower()
-	if low_case == "false":
-		return False
-	elif low_case == "true":
-		return True
-	else:
-		return None
-def extractNumeric(string):
-	if re.match('^\d+$',string):
-		return int(string)
-	elif re.match('^\d+.?\d*$',string):
-		return float(string)
-	else:
-		return None
 
-def setDefaultConfiguration():
-	setConfigurationRaw('phonekitd', True)
-	setConfigurationRaw('received_limit', 50)
-	setConfigurationRaw('made_limit', 50)
-	setConfigurationRaw('missed_limit', 50)
-	setConfigurationRaw('general_limit', 50)
-	setConfigurationRaw('received_tab_name', "Received")
-	setConfigurationRaw('made_tab_name', "Made")
-	setConfigurationRaw('missed_tab_name', "Missed")
-	setConfigurationRaw('general_tab_name', "General")
-	setConfigurationRaw('startup_tab', "missed")
-	return
-def setConfigurationRaw(name, value):
-	configuration[name] = value
-def setConfiguration(name, value):
-	boolean_value = extractBoolean(value)
-	if boolean_value != None:
-		setConfigurationRaw(name, boolean_value)
-		return
-
-	numeric_value = extractNumeric(value)
-	if numeric_value != None:
-		setConfigurationRaw(name, numeric_value)
-		return
-	else:
-		setConfigurationRaw(name, value)
-		return
-def getConfiguration(name):
-	if name in configuration:
-		return configuration[name]
-	else:
-		return None
-def initConfiguration(file):
-	"""
-	Reads the signal list from the file given as parameter
-	(to launch, interface, busname, path, signal, rules) from to_launch=interface;busname;path;signal;rule1,rule2...
-	"""
-	setDefaultConfiguration()
-	
-	if not os.path.exists(file):
-		shutil.copy(DEMO_CONFIG_PATH, file)
-		
-	regex = re.compile('^\s*([^=\s]*)\s*=\s*(.*)\s*\n$')
-	comment_regex = re.compile('^\s*#')
-	FILE = open(file,'r')
-
-	print "Using configuration:"
-	print "*********************"
-	for line in FILE:
-		if not comment_regex.match(line):
-			parsed = regex.match(line)
-			#ignore bad config lines
-			if parsed != None:
-				print line
-				setConfiguration(parsed.group(1), parsed.group(2))
-	print "*********************"
-	print "End of used configuration"
-		
-	FILE.close()
-	
-	return True
 #END OF GET/EDIT DATA
 
 #DBUS FUNCTIONS
@@ -338,7 +341,7 @@ def populateList(list, type, previous_time, visual_flag = False, group_type = 1)
 	"""
 	global phoneLog
 
-	if getConfiguration('phonekitd'):
+	if config.get('phonekitd'):
 		calls = getPhonekitCallsList(type)
 		if len(calls) == 0:
 			return False
@@ -370,7 +373,7 @@ def populateList(list, type, previous_time, visual_flag = False, group_type = 1)
 		elif group_type == 2:
 			sametype_group = True
 			#HACK FOR THE GENERAL LIST
-			if getConfiguration('phonekitd'):
+			if config.get('phonekitd'):
 				missed = (call[3] == None)
 				if missed and status == 0:
 					status = 2
@@ -506,15 +509,15 @@ def getSelectedNumber(list):
 
 
 systemBus = dbus.SystemBus()
-initConfiguration(CONFIGURATION_FILE)
+config = Configuration(CONFIGURATION_FILE)
 
 #init db
 
-if getConfiguration('phonekitd'):
+if config.get('phonekitd'):
 	if not os.path.exists(OPHONEKITD_DB):
 		print "Can't Find " + OPHONEKITD_DB + " Falling back to the daemon"
 		phoneLog = getPhoneLogObject(systemBus)
-		setConfiguration('phonekitd', "False")
+		config.setDirect('phonekitd', False)
 	database = sqlite3.connect(OPHONEKITD_DB)	
 else:
 	phoneLog = getPhoneLogObject(systemBus)
@@ -544,18 +547,18 @@ missedTab = createCallsTab(missedList, PAGE_MISSED)
 generalTab = createCallsTab(generalList, PAGE_GENERAL)
 settingsTab = createSettingsTab()
 
-addTab(notebook, incomingTab, getConfiguration('received_tab_name'))
-addTab(notebook, outgoingTab, getConfiguration('made_tab_name'))
-addTab(notebook, missedTab, getConfiguration('missed_tab_name'))
-addTab(notebook, generalTab, getConfiguration('general_tab_name'))
+addTab(notebook, incomingTab, config.get('received_tab_name'))
+addTab(notebook, outgoingTab, config.get('made_tab_name'))
+addTab(notebook, missedTab, config.get('missed_tab_name'))
+addTab(notebook, generalTab, config.get('general_tab_name'))
 
 #temporary solution:
-if not getConfiguration('phonekitd'):
+if not config.get('phonekitd'):
 	addTab(notebook, settingsTab, "Settings")
 
 win.show_all()
 
-startup_page = stringToTabNumber( getConfiguration('startup_tab') )
+startup_page = stringToTabNumber( config.get('startup_tab') )
 notebook.set_current_page(startup_page)
 
 #retrieve contacts
@@ -572,5 +575,5 @@ updateLastTime()
 
 gtk.main()
 
-if getConfiguration('phonekitd'):
+if config.get('phonekitd'):
 	database.close()
