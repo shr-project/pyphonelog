@@ -113,6 +113,14 @@ def useOphonekit():
 
 
 #GET/EDIT DATA FUNCTIONS
+def setDefaultConfiguration():
+	configuration['phonekitd'] = True
+	configuration['incoming_limit'] = 50
+	configuration['outgoing_limit'] = 50
+	configuration['missed_limit'] = 50
+	configuration['general_limit'] = 50
+
+	return
 def getContact(number):
 	global contacts
 	for contact in contacts:
@@ -143,13 +151,13 @@ def comparePhoneNumber(number1, number2):
 def getPhonekitCallsList(type):
 	get_fields = "number, strftime('%s',startTime), direction"
 	if type == "missed":
-		calls = database.execute("SELECT %s FROM missed_calls WHERE direction = ? ORDER BY startTime DESC" % (get_fields, ) , (CALL_STATUS_INCOMING, )).fetchall()
+		calls = database.execute("SELECT %s FROM missed_calls WHERE direction = ? ORDER BY startTime DESC LIMIT ?" % (get_fields, getConfiguration('missed_limit') ) , (CALL_STATUS_INCOMING, )).fetchall()
 	elif type == "incoming":
-		calls = database.execute("SELECT %s FROM calls WHERE direction = ? AND activeTime IS NOT NULL ORDER BY startTime DESC" % (get_fields, ), (CALL_STATUS_INCOMING, )).fetchall()
+		calls = database.execute("SELECT %s FROM calls WHERE direction = ? AND activeTime IS NOT NULL ORDER BY startTime DESC LIMIT ?" % (get_fields, getConfiguration('incoming_limit')), (CALL_STATUS_INCOMING, )).fetchall()
 	elif type == "outgoing":
-		calls = database.execute("SELECT %s FROM calls WHERE direction = ? ORDER BY startTime DESC" % (get_fields, ), (CALL_STATUS_OUTGOING, )).fetchall()
+		calls = database.execute("SELECT %s FROM calls WHERE direction = ? ORDER BY startTime DESC LIMIT ?" % (get_fields, ), (CALL_STATUS_OUTGOING, getConfiguration('outgoing_limit'))).fetchall()
 	elif type == "all":
-		calls = database.execute("SELECT %s, activeTime FROM calls ORDER BY startTime DESC" % (get_fields, ) ).fetchall()
+		calls = database.execute("SELECT %s, activeTime FROM calls ORDER BY startTime DESC LIMIT ?" % (get_fields, getConfiguration('general_limit')) ).fetchall()
 	else:
 		return None
 		
@@ -191,6 +199,8 @@ def initConfiguration(file):
 	Reads the signal list from the file given as parameter
 	(to launch, interface, busname, path, signal, rules) from to_launch=interface;busname;path;signal;rule1,rule2...
 	"""
+	setDefaultConfiguration()
+	
 	if not os.path.exists(file):
 		shutil.copy(DEMO_CONFIG_PATH, file)
 		
