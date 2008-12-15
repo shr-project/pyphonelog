@@ -126,6 +126,7 @@ class Configuration:
 		self.setDirect('missed_tab_name', "Missed")
 		self.setDirect('general_tab_name', "General")
 		self.setDirect('startup_tab', "missed")
+		self.setDirect('time_format', "%d-%m-%Y %H:%M:%S")
 		return
 	def __extractBoolean(self, string):
 		low_case = string.lower()
@@ -306,7 +307,7 @@ class CallsTab:
 			
 			parent_added = model.append(parent, ( contact , 
 					number ,
-					call_time.strftime("%d-%m-%Y %H:%M:%S") ,
+					call_time.strftime(config.get('time_format') ) ,
 					visual_flag and (call_time > previous_time) ,
 					status
 					)
