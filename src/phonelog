@@ -10,7 +10,7 @@ Written by Tom Hacohen. (tom@stosb.com)
 Licensed by GPLv2
 """
 
-__version__ = "0.15.1"
+__version__ = "0.15.3"
 
 import dbus
 import gobject, gtk
@@ -171,7 +171,6 @@ class CallsTab:
 		self.__createCallsTab()
 		self.last_refresh = last_time
 		self.mark_new = mark_new
-
 	def getList(self):
 		return self.__list
 
@@ -261,12 +260,19 @@ class CallsTab:
 		
 		#add to model
 		for call in calls:
+			
 			number = call[0]
 			contact = getContact(number)
 			timestamp = float(call[1])	
 			call_time = datetime.fromtimestamp( timestamp )
 			status = call[2]
 
+
+
+			#hack because of the (frameworks?) double quotes bug
+			number = number.strip('"')
+
+			
 			#handle grouping types
 			sametype_group = False
 			if group_type == 0:
@@ -369,7 +375,11 @@ class CallsTab:
 
 		number = row[self.NUMBER_POSITION]
 		return number
-
+	def addToTab(self, notebook):
+		type = typeFromLegacyDaemonType(self.__type)
+		tabLabel = gtk.Label(config.get(type + '_tab_name') )
+		
+		notebook.insert_page(self.getTab(), tabLabel)
 class GeneralTab (CallsTab):
 	#ACTUAL GUI POSTITON
 	STATUS_COLUMN = 0	
@@ -482,7 +492,6 @@ def getPhonekitCallsList(type):
 			(config.get('general_limit'),) ).fetchall()
 	else:
 		return None
-		
 	return calls
 	
 
@@ -504,10 +513,7 @@ def getPhoneObject (bus, busname = PHONE_BUSNAME, objectpath = PHONE_OBJECTPATH,
 #END OF DBUS FUNCTIONS
 
 #GUI INITIALAZATION
-def addTab(notebook, tab_content, label):
-	tabLabel = gtk.Label(label )
-	
-	notebook.insert_page(tab_content, tabLabel)
+
 
 def createSettingsTab():
 	vbox = gtk.VBox()
@@ -596,11 +602,11 @@ notebook= gtk.Notebook()
 win.add (notebook)
 
 
+incoming.addToTab(notebook)
+outgoing.addToTab(notebook)
+missed.addToTab(notebook)
+general.addToTab(notebook)
 
-addTab(notebook, incoming.getTab(), config.get('received_tab_name'))
-addTab(notebook, outgoing.getTab(), config.get('made_tab_name'))
-addTab(notebook, missed.getTab(), config.get('missed_tab_name'))
-addTab(notebook, general.getTab(), config.get('general_tab_name'))
 
 #temporary solution:
 if not config.get('phonekitd'):
