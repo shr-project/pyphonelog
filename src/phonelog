@@ -236,8 +236,9 @@ class CallsTab:
 			calls = getPhonekitCallsList(type)
 			if len(calls) == 0:
 				return False
-		else:	
-			calls = phoneLog.GetCallsList(type)
+		else:
+			legacy_limit = typeFromLegacyDaemonType(type)
+			calls = phoneLog.GetCallsList(type, config.get(legacy_limit + "_limit"))
 			try: #hack because i send dbus empty
 				calls[0]
 			except:
@@ -415,6 +416,17 @@ def stringToTabNumber(string):
 		return PAGE_MISSED
 	elif string.lower() == "general":
 		return PAGE_GENERAL
+def typeFromLegacyDaemonType(type):
+	if type == "incoming":
+		return 'received'
+	elif type == "outgoing":
+		return 'made'
+	elif type == "missed":
+		return 'missed'
+	elif type == "all":
+		return 'general'
+	else:
+		return "received"
 #END OF GENERAL PURPOSE FUNCTIONS
 
 
