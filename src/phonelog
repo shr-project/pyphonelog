@@ -153,6 +153,9 @@ class CallsTab:
 	DATE_POSITION = 2
 	STATUS_POSITION = 4
 
+	#unix time
+	last_refresh = 1
+	
 	#ACTUAL GUI POSTITON
 	CONTACT_COLUMN = 0
 	DATE_COLUMN = 1
@@ -160,17 +163,22 @@ class CallsTab:
 	__show_column = CONTACT_POSITION
 	__tab = None
 	__type = None
+	__mark_new = False
 	
-	def __init__(self, type):
+	def __init__(self, type, last_time, mark_new = False):
 		self.createList()
 		self.__type = type
 		self.__createCallsTab()
+		self.last_refresh = last_time
+		self.mark_new = mark_new
 
 	def getList(self):
 		return self.__list
 
 	def getTab(self):
 		return self.__tab
+	def shouldMarkNew(self):
+		return self.__mark_new
 	def __getContactColumn(self):
 		return self.CONTACT_COLUMN
 	def __getDateColumn(self):
@@ -222,7 +230,7 @@ class CallsTab:
 		scrolled.add_with_viewport(tab_content)
 		return scrolled
 		
-	def populateList(self, previous_time, visual_flag = False, group_type = 1):
+	def populateList(self, group_type = 1):
 		"""
 		group_type =
 		0 - never group
@@ -232,7 +240,8 @@ class CallsTab:
 		global phoneLog
 		list = self.__list
 		type = self.__type
-		
+		last_time = self.last_refresh
+		visual_flag = self.shouldMarkNew()
 		if config.get('phonekitd'):
 			calls = getPhonekitCallsList(type)
 			if len(calls) == 0:
@@ -532,6 +541,15 @@ def settingsErase_clicked (button, list_type):
 	phoneLog.ClearCallsList(list_type)
 
 
+def cb_notebook_switch_page (notebook, page, page_num):
+	if page_num == PAGE_INCOMING:
+		incoming.populateList()
+	elif page_num == PAGE_OUTGOING:
+		outgoing.populateList()
+	elif page_num == PAGE_MISSED:
+		missed.populateList()
+	elif page_num == PAGE_GENERAL:
+		general.populateList(2)
 #Data manipulation
 #End of GTK
 
@@ -563,16 +581,21 @@ win = gtk.Window()
 win.connect('delete-event', gtk.main_quit)
 win.set_title("Phone Log")
 
+last_time = getLastTime()
+
+incoming = CallsTab('incoming', last_time)
+outgoing = CallsTab('outgoing', last_time)
+missed = CallsTab('missed', last_time, True)
+general = GeneralTab("all", last_time)
+
+updateLastTime()
+
+settingsTab = createSettingsTab()
 
 notebook= gtk.Notebook()
 win.add (notebook)
 
-incoming = CallsTab('incoming')
-outgoing = CallsTab('outgoing')
-missed = CallsTab('missed')
-general = GeneralTab("all") 
 
-settingsTab = createSettingsTab()
 
 addTab(notebook, incoming.getTab(), config.get('received_tab_name'))
 addTab(notebook, outgoing.getTab(), config.get('made_tab_name'))
@@ -588,17 +611,17 @@ win.show_all()
 startup_page = stringToTabNumber( config.get('startup_tab') )
 notebook.set_current_page(startup_page)
 
+notebook.connect('switch-page', cb_notebook_switch_page)
 #retrieve contacts
 contacts = contactsObject.RetrievePhonebook("contacts")
 
-last_time = getLastTime()
-incoming.populateList(last_time)
-outgoing.populateList(last_time)
-missed.populateList(last_time,True)
-general.populateList(last_time,False, 2)
+incoming.populateList()
+outgoing.populateList()
+missed.populateList()
+general.populateList(2)
 
 #start
-updateLastTime()
+
 
 gtk.main()
 
