@@ -19,6 +19,7 @@ setup(name='pyphonelog',
 	scripts = ['src/phonelog'],
 	data_files= [
 		('applications', ['data/applications/phonelog.desktop']),
+		('pixmaps', ['data/pixmaps/phonelog.png']),
 		('phonelog/skeleton', ['data/config/phonelog.conf'])
 	]
         

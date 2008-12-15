@@ -1,12 +1,12 @@
 [Desktop Entry]
 Encoding=UTF-8
-Version=0.1
+Version=0.15.2
 Name=PhoneLog
 Type=Application
 Comment=Show Phone Log
 Terminal=true
 Path=
-Icon=/usr/share/icons/openmoko-standard/48x48/stock/moko-history.png
+Icon=phonelog.png
 Categories=System;Application;
 GenericName=PhoneLog
 Categories=Office;

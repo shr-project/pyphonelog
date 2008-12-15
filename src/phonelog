@@ -247,7 +247,7 @@ class CallsTab:
 
 		
 		model = list.get_model()
-
+		model.clear()
 		last_parent_added = None
 		
 		#add to model
@@ -366,9 +366,6 @@ class GeneralTab (CallsTab):
 	STATUS_COLUMN = 0	
 	CONTACT_COLUMN = 1
 	DATE_COLUMN = 2
-	def __init__(self, type):
-		self.createList()
-		CallsTab.__init__(self, type)
 	def __getStatusColumn(self):
 		return self.STATUS_COLUMN
 		
@@ -384,6 +381,7 @@ class GeneralTab (CallsTab):
 		list.insert_column( column0, self.__getStatusColumn() )
 	
 	
+
 
 #GENERAL PURPOSE FUNCTIONS
 def getLastTime(file = TIME_FILE):
@@ -572,10 +570,8 @@ win.add (notebook)
 incoming = CallsTab('incoming')
 outgoing = CallsTab('outgoing')
 missed = CallsTab('missed')
-general = GeneralTab("all") # = createGeneralList()
+general = GeneralTab("all") 
 
-
-#generalTab = createCallsTab(generalList, PAGE_GENERAL)
 settingsTab = createSettingsTab()
 
 addTab(notebook, incoming.getTab(), config.get('received_tab_name'))
