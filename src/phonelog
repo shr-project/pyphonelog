@@ -49,6 +49,7 @@ CONFIGURATION_DIR = "/home/root/.phonelog/"
 TIME_FILE = CONFIGURATION_DIR + "time.dat"
 CONFIGURATION_FILE = CONFIGURATION_DIR + "phonelog.conf"
 DEMO_CONFIG_PATH = "/usr/share/phonelog/skeleton/phonelog.conf"
+ICONS_PATH = "/usr/share/phonelog/icons/"
 
 #OPHONEKITD related
 OPHONEKITD_DB = "/var/db/phonelog.db"
@@ -130,10 +131,20 @@ class Configuration:
 		self.setDirect('made_limit', 50)
 		self.setDirect('missed_limit', 50)
 		self.setDirect('general_limit', 50)
+
 		self.setDirect('received_tab_name', "Received")
 		self.setDirect('made_tab_name', "Made")
 		self.setDirect('missed_tab_name', "Missed")
 		self.setDirect('general_tab_name', "General")
+		self.setDirect('received_tab_type', 'icon')
+		self.setDirect('made_tab_type', 'icon')
+		self.setDirect('missed_tab_type', 'icon')
+		self.setDirect('general_tab_type', 'icon')
+		self.setDirect('received_tab_image_file', "received.png")
+		self.setDirect('made_tab_image_file', "made.png")
+		self.setDirect('missed_tab_image_file', "missed.png")
+		self.setDirect('general_tab_image_file', "general.png")
+		
 		self.setDirect('startup_tab', "missed")
 		self.setDirect('time_format', "%d-%m-%Y %H:%M:%S")
 		self.setDirect('received_mark', "↓")
@@ -442,9 +453,19 @@ class CallsTab:
 		return number
 	def addToTab(self, notebook):
 		type = typeFromLegacyDaemonType(self.__type)
-		tabLabel = gtk.Label(config.get(type + '_tab_name') )
+		if config.get(type + '_tab_type') == 'icon':
+			tabWidget = gtk.Image()
+			image_path = config.get(type + '_tab_image_file')
+
+			#if not absolute
+			if image_path[0] != '/':
+				image_path = ICONS_PATH + image_path
+				
+			tabWidget.set_from_file(image_path)
+		else:
+			tabWidget = gtk.Label(config.get(type + '_tab_name') )
 		
-		notebook.insert_page(self.getTab(), tabLabel)
+		notebook.insert_page(self.getTab(), tabWidget)
 class GeneralTab (CallsTab):
 	#ACTUAL GUI POSTITON
 	STATUS_COLUMN = 0	
@@ -577,7 +598,6 @@ def cb_notebook_switch_page (notebook, page, page_num):
 		missed.populateList()
 	elif page_num == PAGE_GENERAL:
 		general.populateList()
-#Data manipulation
 #End of GTK
 
 #create the config dir if doesn't exist.
@@ -613,9 +633,11 @@ RefreshTime = LastTime(TIME_FILE)
 incoming = CallsTab('incoming')
 outgoing = CallsTab('outgoing')
 missed = CallsTab('missed', True)
-general = GeneralTab("all")
+general = GeneralTab('all')
 
 notebook= gtk.Notebook()
+notebook.set_property('homogeneous', True)
+
 win.add (notebook)
 
 incoming.addToTab(notebook)

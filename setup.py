@@ -2,7 +2,7 @@ from distutils.core import setup
 import glob
     
 setup(name='pyphonelog',
-        version='0.15.3',
+        version='0.15.4',
 	description='A phonelog gui that connects to the shr daemon/a custom daemon',
         author='Tom Hacohen',
         author_email='tom@stosb.com',
@@ -20,7 +20,11 @@ setup(name='pyphonelog',
 	data_files= [
 		('applications', ['data/applications/phonelog.desktop']),
 		('pixmaps', ['data/pixmaps/phonelog.png']),
-		('phonelog/skeleton', ['data/config/phonelog.conf'])
+		('phonelog/skeleton', ['data/config/phonelog.conf']),
+		('phonelog/icons', ['data/pixmaps/ui/missed.png',\
+				   ['data/pixmaps/ui/received.png',\
+				   ['data/pixmaps/ui/made.png',\
+				   ['data/pixmaps/ui/general.png'])
 	]
         
      )
