@@ -1,7 +1,5 @@
 * should the user see how many are in the group?
 * add more config options
-* should probably make the ophonekitd an object and not a function and change the settings straight to it, and not as is now.
 * add a call duration field.
 * clean the main "function" by grouping GUI init.
-
 
