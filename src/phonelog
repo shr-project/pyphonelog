@@ -220,13 +220,16 @@ class CallsTab:
 	CONTACT_POSITION = 0
 	NUMBER_POSITION = 1
 	DATE_POSITION = 2
-	STATUS_POSITION = 4
+	DURATION_POSITION = 3
+	VISUAL_POSITION = 4
+	STATUS_POSITION = 5
 	
 	#ACTUAL GUI POSTITON
 	CONTACT_COLUMN = 0
 	DATE_COLUMN = 1
 	__list = None
-	__show_column = CONTACT_POSITION
+	__contact_show_column = CONTACT_POSITION
+	__date_show_column = DATE_POSITION
 	__tab = None
 	__type = None
 	__mark_new = False
@@ -248,6 +251,7 @@ class CallsTab:
 		return self.CONTACT_COLUMN
 	def __getDateColumn(self):
 		return self.DATE_COLUMN
+
 	def __createCallsTab(self):
 		page = gtk.VBox()
 		page.pack_start( self.__initScrolled() )
@@ -260,12 +264,17 @@ class CallsTab:
 		numberButton = gtk.Button("Show Numbers")
 		numberButton.connect ("clicked", self.numberButton_clicked)
 
+		durationButton = gtk.Button("Show Duration")
+		durationButton.connect ("clicked", self.durationButton_clicked)
+
 		buttons.pack_start(callButton, True, padding = 1)
 		buttons.pack_start(numberButton, True, padding = 1)
+		buttons.pack_start(durationButton, True, padding = 1)
 		
 		self.__tab = page
 	def __createTreeView(self):
 		self.__list = gtk.TreeView (gtk.TreeStore( gobject.TYPE_STRING, 
+					gobject.TYPE_STRING,
 					gobject.TYPE_STRING,
 					gobject.TYPE_STRING,
 					gobject.TYPE_BOOLEAN,  #the boolean is there for coloring
@@ -279,9 +288,9 @@ class CallsTab:
 		#change text size as well?
 		renderer.set_property('weight', 800)
 
-		column0 = gtk.TreeViewColumn("Contact", renderer, text=0, weight_set=3)
+		column0 = gtk.TreeViewColumn("Contact", renderer, text=self.CONTACT_POSITION, weight_set=self.VISUAL_POSITION)
 		self.__list.insert_column( column0, self.__getContactColumn() )
-		column0 = gtk.TreeViewColumn("Time", renderer, text=2, weight_set=3)
+		column0 = gtk.TreeViewColumn("Time", renderer, text=self.DATE_POSITION, weight_set=self.VISUAL_POSITION)
 		self.__list.insert_column( column0, self.__getDateColumn())
 		
 	def __initScrolled(self):
@@ -346,7 +355,9 @@ class CallsTab:
 
 				#untill the change will be coded in the daemon
 				if active_time == None:
-					active_time = 0
+					active_time = "00:00"
+			else:
+				active_time = "No legacy support"
 
 			#hack because of the (frameworks?) double quotes bug
 			number = number.strip('"')
@@ -360,7 +371,7 @@ class CallsTab:
 				sametype_group = True
 				#HACK FOR THE GENERAL LIST
 				if config.get('phonekitd'):
-					if active_time == 0:
+					if active_time == "00:00":
 						status += 2
 
 			missed = (status == 2)
@@ -397,6 +408,7 @@ class CallsTab:
 			parent_added = model.append(parent, ( contact , 
 					number ,
 					call_time.strftime(config.get('time_format') ) ,
+					active_time, 
 					visual_flag and (call_time > previous_time) ,
 					status
 					)
@@ -429,19 +441,42 @@ class CallsTab:
 		renderer = contact_column.get_cell_renderers()[0]
 
 		
-		if self.__show_column == self.CONTACT_POSITION:
-			self.__show_column = self.NUMBER_POSITION
+		if self.__contact_show_column == self.CONTACT_POSITION:
+			self.__contact_show_column = self.NUMBER_POSITION
 			button_label = "Show Names"
 
 		else:
-			self.__show_column = self.CONTACT_POSITION
+			self.__contact_show_column = self.CONTACT_POSITION
 			button_label = "Show Numbers"
 			
 		button.set_label(button_label)
-		contact_column.set_attributes(renderer, text=self.__show_column)
+		contact_column.set_attributes(renderer, text=self.__contact_show_column)
 
 		
 		
+	def durationButton_clicked (self, button):
+		list = self.__list
+		
+		get_column = self.__getDateColumn()
+
+		date_column = list.get_column(get_column)
+		renderer = date_column.get_cell_renderers()[0]
+
+		
+		if self.__date_show_column == self.DATE_POSITION:
+			self.__date_show_column = self.DURATION_POSITION
+			button_label = "Show Date"
+
+		else:
+			self.__date_show_column = self.DATE_POSITION
+			button_label = "Show Duration"
+			
+		button.set_label(button_label)
+		date_column.set_attributes(renderer, text=self.__date_show_column)
+
+		
+		
+	
 	def __getSelectedNumber(self):
 		list = self.__list
 		selected = list.get_selection().get_selected_rows()
@@ -464,7 +499,7 @@ class CallsTab:
 			tabWidget.set_from_file(image_path)
 		else:
 			tabWidget = gtk.Label(config.get(type + '_tab_name') )
-
+		
 		notebook.insert_page(self.getTab(), tabWidget)
 class GeneralTab (CallsTab):
 	#ACTUAL GUI POSTITON
@@ -481,7 +516,7 @@ class GeneralTab (CallsTab):
 		renderer.set_property('weight', 800)
 		renderer.set_property('size-points', 8)
 		
-		column0 = gtk.TreeViewColumn("Status", renderer, text=4)
+		column0 = gtk.TreeViewColumn("Status", renderer, text=self.STATUS_POSITION)
 		list = self.getList()
 		list.insert_column( column0, self.__getStatusColumn() )
 	def populateList(self, group_type = None):
@@ -548,7 +583,7 @@ def comparePhoneNumber(number1, number2):
 		return digits1[-7:] == digits2[-7:]
 		
 def getPhonekitCallsList(type):
-	get_fields = "number, strftime('%s',startTime), direction, activeTime"
+	get_fields = "number, strftime('%s',startTime), direction, duration"
 	#if type == "missed":
 	#	calls = database.execute("SELECT %s FROM missed_calls WHERE direction = ? ORDER BY startTime DESC LIMIT ?" % (get_fields,  ) ,\
 	#		(CALL_STATUS_INCOMING, config.get('missed_limit'))).fetchall()
