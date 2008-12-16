@@ -22,9 +22,9 @@ setup(name='pyphonelog',
 		('pixmaps', ['data/pixmaps/phonelog.png']),
 		('phonelog/skeleton', ['data/config/phonelog.conf']),
 		('phonelog/icons', ['data/pixmaps/ui/missed.png',\
-				   ['data/pixmaps/ui/received.png',\
-				   ['data/pixmaps/ui/made.png',\
-				   ['data/pixmaps/ui/general.png'])
+				    'data/pixmaps/ui/received.png',\
+				    'data/pixmaps/ui/made.png',\
+				    'data/pixmaps/ui/general.png'])
 	]
         
      )
