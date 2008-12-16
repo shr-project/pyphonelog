@@ -27,6 +27,11 @@ try:
 except:
 	use_mokoui = False
 
+
+from dbus.mainloop.glib import DBusGMainLoop
+
+
+
 #constants
 """PHONELOG_BUSNAME = "org.freesmartphone.opimd"
 PHONELOG_OBJECTPATH = "/org/freesmartphone/PIM/Log"
@@ -373,6 +378,10 @@ class CallsTab:
 				if config.get('phonekitd'):
 					if active_time == "00:00":
 						status += 2
+						#Usually it shouldn't be changed back, things have
+						#to change before that can happen
+						if status == 3:
+							status = 1
 
 			missed = (status == 2)
 				
@@ -526,6 +535,43 @@ class GeneralTab (CallsTab):
 	
 
 
+class SignalMonitor ():
+	__bus = None
+	def __init__(self, bus):
+		self.__bus = bus
+		self.__connectCallStatus()
+	def __connectCallStatus(self):
+		bus = self.__bus
+		proxy = bus.get_object(PHONE_BUSNAME,PHONE_OBJECTPATH)
+		iface = dbus.Interface(proxy, PHONE_INTERFACE)
+		iface.connect_to_signal("CallStatus", self.cb_CallStatus)
+        			
+	def cb_CallStatus(self, id, status, props):
+		#should this even happen?
+		if props == None:
+			return 
+
+		
+		#we only handle release
+		if status != "release":
+			return 
+
+		"""
+		direction = props[0]
+		if direction == "incoming":
+			incoming.populateList()
+			missed.populateList()
+		elif direction == "outgoing":
+			outgoing.populateList()
+		"""
+		#on release update all, figure out how to check what to
+		#update.
+		#FIXME: possible race condition with the phonelog daemon.
+		incoming.populateList()
+		missed.populateList()
+		outgoing.populateList()
+		general.populateList()
+		
 #GENERAL PURPOSE FUNCTIONS
 def useOphonekit():
 	return os.path.exists(OPHONEKITD_DB)
@@ -622,18 +668,15 @@ def getPhoneObject (bus, busname = PHONE_BUSNAME, objectpath = PHONE_OBJECTPATH,
 #END OF DBUS FUNCTIONS
 
 
-#GTK
-#Callbacks
-def cb_notebook_switch_page (notebook, page, page_num):
-	if page_num == PAGE_INCOMING:
-		incoming.populateList()
-	elif page_num == PAGE_OUTGOING:
-		outgoing.populateList()
-	elif page_num == PAGE_MISSED:
-		missed.populateList()
-	elif page_num == PAGE_GENERAL:
-		general.populateList()
-#End of GTK
+def quitMainloop(*a):
+	mainloop.quit()
+
+#############################################
+################# MAIN ######################
+#############################################
+
+DBusGMainLoop(set_as_default=True)
+mainloop = gobject.MainLoop()
 
 #create the config dir if doesn't exist.
 if not os.path.exists(CONFIGURATION_DIR):
@@ -660,10 +703,12 @@ phoneObject = getPhoneObject(systemBus)
 
 #init gtk
 win = gtk.Window()
-win.connect('delete-event', gtk.main_quit)
+win.connect('delete-event', quitMainloop )
 win.set_title("Phone Log")
 
+
 RefreshTime = LastTime(TIME_FILE)
+RefreshMonitor = SignalMonitor(systemBus)
 
 incoming = CallsTab('incoming')
 outgoing = CallsTab('outgoing')
@@ -684,7 +729,7 @@ win.show_all()
 startup_page = stringToTabNumber( config.get('startup_tab') )
 notebook.set_current_page(startup_page)
 
-notebook.connect('switch-page', cb_notebook_switch_page)
+
 #retrieve contacts
 contacts = contactsObject.RetrievePhonebook("contacts")
 
@@ -695,8 +740,7 @@ general.populateList()
 
 #start
 
-
-gtk.main()
+mainloop.run()
 
 RefreshTime.writeToFile()
 

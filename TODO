@@ -1,4 +1,4 @@
 * should the user see how many are in the group?
 * add more config options
 * clean the main "function" by grouping GUI init.
-* refresh at runtime (listen to release call status)
+* make refresh at runtime refresh only the correct type, and fix the possible race condition
