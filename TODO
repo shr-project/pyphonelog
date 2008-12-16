@@ -1,9 +1,7 @@
 * should the user see how many are in the group?
-* settings tab. - is it really necessary? (probably yeah)
 * add more config options
 * should probably make the ophonekitd an object and not a function and change the settings straight to it, and not as is now.
 * add a call duration field.
-* split the populate list function into several sub functions so doing the first todo on get focus would be easy. (and even without it)
-* last_time is not saved in the configs specific to each page though it is, fix that.
+* clean the main "function" by grouping GUI init.
 
 

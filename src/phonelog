@@ -136,6 +136,9 @@ class Configuration:
 		self.setDirect('general_tab_name', "General")
 		self.setDirect('startup_tab', "missed")
 		self.setDirect('time_format', "%d-%m-%Y %H:%M:%S")
+		self.setDirect('received_mark', "↓")
+		self.setDirect('made_mark', "↑")
+		self.setDirect('missed_mark', "↺")
 		return
 	def __extractBoolean(self, string):
 		low_case = string.lower()
@@ -281,6 +284,21 @@ class CallsTab:
 		scrolled.add_with_viewport(tab_content)
 		return scrolled
 		
+	def __getCalls(self):
+		type = self.__type
+		if config.get('phonekitd'):
+			calls = getPhonekitCallsList(type)
+			if len(calls) == 0:
+				return None				
+		else:
+			global phoneLog
+			legacy_limit = typeFromLegacyDaemonType(type)
+			calls = phoneLog.GetCallsList(type, config.get(legacy_limit + "_limit"))
+			try: #hack because i send dbus empty
+				calls[0]
+			except:
+				return None
+		return calls
 	def populateList(self, group_type = 1):
 		"""
 		group_type =
@@ -288,30 +306,22 @@ class CallsTab:
 		1/everything else - always group
 		2 - group from the same type only.
 		"""
-		global phoneLog
 		list = self.__list
 		type = self.__type
 		previous_time = datetime.fromtimestamp(RefreshTime.get(type))
 		visual_flag = self.shouldMarkNew()
 
-		if config.get('phonekitd'):
-			calls = getPhonekitCallsList(type)
-			if len(calls) == 0:
-				return False
-		else:
-			legacy_limit = typeFromLegacyDaemonType(type)
-			calls = phoneLog.GetCallsList(type, config.get(legacy_limit + "_limit"))
-			try: #hack because i send dbus empty
-				calls[0]
-			except:
-				return False
-
-		
+		calls = self.__getCalls()
+		if calls == None:
+			return False
+			
+		#get and clear the model.
 		model = list.get_model()
 		model.clear()
+
+		
 		last_parent_added = None
 		
-		#add to model
 		for call in calls:
 			
 			number = call[0]
@@ -320,26 +330,29 @@ class CallsTab:
 			call_time = datetime.fromtimestamp( timestamp )
 			status = call[2]
 
+			if config.get('phonekitd'):
+				active_time = call[3]
 
+				#untill the change will be coded in the daemon
+				if active_time == None:
+					active_time = 0
 
 			#hack because of the (frameworks?) double quotes bug
 			number = number.strip('"')
-
 			
 			#handle grouping types
 			sametype_group = False
 			if group_type == 0:
-				#if we don't want to group, change the last_parent_added to None
+				#if we don't want to group, parent is always None
 				last_parent_added = None
 			elif group_type == 2:
 				sametype_group = True
 				#HACK FOR THE GENERAL LIST
 				if config.get('phonekitd'):
-					missed = (call[3] == None)
-					if missed and status == 0:
-						status = 2
-				else:
-					missed = (call[2] == 2)
+					if active_time == 0:
+						status += 2
+
+			missed = (status == 2)
 				
 			#check if should be grouped
 			parent = None
@@ -350,15 +363,12 @@ class CallsTab:
 							
 					parent = last_parent_added
 				
-			#update the last_statuses
+
+			#update the last_statuses so we won't rely on the GUI
 			last_contact = contact
 			last_number = number
 			last_status = status
-
-
-			#HACK for the general. MUST CHANGE!!!
-			if sametype_group: 
-				last_missed = missed
+			last_missed = missed
 
 			#We want the contact to show as the number if it's not in the phonebook.
 			if contact == "":
@@ -366,11 +376,11 @@ class CallsTab:
 			
 			#style status
 			if status == 0:
-				status = "↓"
+				status = config.get('received_mark')
 			elif status == 1:
-				status = "↑"
+				status = config.get('made_mark')
 			elif status == 2:
-				status = "↺"
+				status = config.get('missed_mark')
 				
 			
 			parent_added = model.append(parent, ( contact , 
@@ -384,6 +394,7 @@ class CallsTab:
 			if parent == None:
 				last_parent_added = parent_added
 
+		#Set last refresh time
 		RefreshTime.set(type)
 		return True										
 
@@ -516,10 +527,13 @@ def comparePhoneNumber(number1, number2):
 		return digits1[-7:] == digits2[-7:]
 		
 def getPhonekitCallsList(type):
-	get_fields = "number, strftime('%s',startTime), direction"
+	get_fields = "number, strftime('%s',startTime), direction, activeTime"
+	#if type == "missed":
+	#	calls = database.execute("SELECT %s FROM missed_calls WHERE direction = ? ORDER BY startTime DESC LIMIT ?" % (get_fields,  ) ,\
+	#		(CALL_STATUS_INCOMING, config.get('missed_limit'))).fetchall()
 	if type == "missed":
-		calls = database.execute("SELECT %s FROM missed_calls WHERE direction = ? ORDER BY startTime DESC LIMIT ?" % (get_fields,  ) ,\
-			(CALL_STATUS_INCOMING, config.get('missed_limit'))).fetchall()
+		calls = database.execute("SELECT %s FROM calls WHERE direction = ? AND activeTime IS NULL ORDER BY startTime DESC LIMIT ?" % (get_fields, ), \
+		(CALL_STATUS_INCOMING, config.get('missed_limit'))).fetchall()
 	elif type == "incoming":
 		calls = database.execute("SELECT %s FROM calls WHERE direction = ? AND activeTime IS NOT NULL ORDER BY startTime DESC LIMIT ?" % (get_fields, ), \
 		(CALL_STATUS_INCOMING, config.get('received_limit'))).fetchall()
@@ -527,7 +541,7 @@ def getPhonekitCallsList(type):
 		calls = database.execute("SELECT %s FROM calls WHERE direction = ? ORDER BY startTime DESC LIMIT ?" % (get_fields, ), \
 			(CALL_STATUS_OUTGOING, config.get('made_limit'))).fetchall()
 	elif type == "all":
-		calls = database.execute("SELECT %s, activeTime FROM calls ORDER BY startTime DESC LIMIT ?" % (get_fields, ), \
+		calls = database.execute("SELECT %s FROM calls ORDER BY startTime DESC LIMIT ?" % (get_fields, ), \
 			(config.get('general_limit'),) ).fetchall()
 	else:
 		return None
@@ -551,41 +565,9 @@ def getPhoneObject (bus, busname = PHONE_BUSNAME, objectpath = PHONE_OBJECTPATH,
 	
 #END OF DBUS FUNCTIONS
 
-#GUI INITIALAZATION
-
-
-def createSettingsTab():
-	vbox = gtk.VBox()
-
-	button = gtk.Button("Clear Incoming")
-	vbox.pack_start(button)
-	button.connect("clicked", settingsErase_clicked, 'incoming')
-
-	button = gtk.Button("Clear Outgoing")
-	vbox.pack_start(button)
-	button.connect("clicked", settingsErase_clicked, 'outgoing')
-	
-	button = gtk.Button("Clear Missed")
-	vbox.pack_start(button)
-	button.connect("clicked", settingsErase_clicked, 'missed')
-	
-	button = gtk.Button("Clear All")
-	vbox.pack_start(button)
-	button.connect("clicked", settingsErase_clicked, 'all')
-	
-	return vbox
-
-
-
-#END OF GUI INITIALAZATION
 
 #GTK
 #Callbacks
-def settingsErase_clicked (button, list_type):
-	global phoneLog
-	phoneLog.ClearCallsList(list_type)
-
-
 def cb_notebook_switch_page (notebook, page, page_num):
 	if page_num == PAGE_INCOMING:
 		incoming.populateList()
@@ -633,22 +615,13 @@ outgoing = CallsTab('outgoing')
 missed = CallsTab('missed', True)
 general = GeneralTab("all")
 
-
-settingsTab = createSettingsTab()
-
 notebook= gtk.Notebook()
 win.add (notebook)
-
 
 incoming.addToTab(notebook)
 outgoing.addToTab(notebook)
 missed.addToTab(notebook)
 general.addToTab(notebook)
-
-
-#temporary solution:
-if not config.get('phonekitd'):
-	addTab(notebook, settingsTab, "Settings")
 
 win.show_all()
 
