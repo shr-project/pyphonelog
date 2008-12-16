@@ -464,8 +464,11 @@ class CallsTab:
 			tabWidget.set_from_file(image_path)
 		else:
 			tabWidget = gtk.Label(config.get(type + '_tab_name') )
+		box = gtk.HBox()
+		box.pack_start(tabWidget)
+		#vbox.set_property('homogeneous', True)
 		
-		notebook.insert_page(self.getTab(), tabWidget)
+		notebook.insert_page(self.getTab(), box)
 class GeneralTab (CallsTab):
 	#ACTUAL GUI POSTITON
 	STATUS_COLUMN = 0	
@@ -636,7 +639,6 @@ missed = CallsTab('missed', True)
 general = GeneralTab('all')
 
 notebook= gtk.Notebook()
-notebook.set_property('homogeneous', True)
 
 win.add (notebook)
 
