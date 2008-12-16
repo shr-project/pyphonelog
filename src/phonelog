@@ -66,23 +66,35 @@ PAGE_GENERAL = 3
 PAGE_SETTINGS = 4
 
 class Configuration:
-	__configuration = dict()
+	__configuration = None
+	__filename = None
 	def __init__(self, file):
 		"""
 		Reads the signal list from the file given as parameter
 		(to launch, interface, busname, path, signal, rules) from to_launch=interface;busname;path;signal;rule1,rule2...
 		"""
+		self.initConfiguration()
+		self.setFilename(file)
 		self.setDefault()
 		
 		if not os.path.exists(file):
 			shutil.copy(DEMO_CONFIG_PATH, file)
+
+		print "Using configuration:"
+		print "*********************"
+		self.extractFromFile()		
+		print "*********************"
+		print "End of configuration"
 			
+	def initConfiguration(self):
+		self.__configuration = dict()
+	def extractFromFile(self):
+		file = self.getFilename()
 		regex = re.compile('^\s*([^=\s]*)\s*=\s*(.*)\s*\n$')
 		comment_regex = re.compile('^\s*#')
 		FILE = open(file,'r')
 
-		print "Using configuration:"
-		print "*********************"
+		
 		for line in FILE:
 			if not comment_regex.match(line):
 				parsed = regex.match(line)
@@ -90,11 +102,8 @@ class Configuration:
 				if parsed != None:
 					print line
 					self.set(parsed.group(1), parsed.group(2))
-		print "*********************"
-		print "End of configuration"
-			
 		FILE.close()
-
+		
 	def setDirect(self, name, value):
 		self.__configuration[name] = value
 	def set(self, name, string):
@@ -145,6 +154,52 @@ class Configuration:
 			return None
 
 
+	def setFilename(self, file):
+		self.__filename = file
+	def getFilename(self):
+		return self.__filename
+	def getDictionary(self):
+		return self.__configuration
+	def writeToFile(self):
+		file = self.getFilename()
+		FILE = open(file,'w')
+		FILE.truncate(0)
+		
+		for option in self.getDictionary():
+			FILE.write(option + ' = ' + str(self.get(option)) + "\n")
+			
+		FILE.close()
+
+class LastTime(Configuration):
+	def __init__(self, file):
+		self.setFilename(file)
+		self.initConfiguration()
+		self.setDefault()
+		if os.path.exists(file):
+			print "Last viewed times:"
+			print "*********************"
+			self.extractFromFile()		
+			print "*********************"
+			print "End of times"		
+		else:
+			self.writeToFile()	
+	def setDefault(self):
+		self.set('incoming', 1)
+		self.set('outgoing', 1)
+		self.set('missed', 1)
+		self.set('all', 1)
+	def get(self, type):
+		last_time = Configuration.get(self, type)
+		if last_time == None:
+			self.set(type)
+			last_time = self.get(type)
+		return last_time
+	def set(self, type, last_time = None):
+		if last_time == None:
+			last_time = time.time()
+		else:
+			last_time = float( last_time )
+		self.setDirect(type, last_time )
 
 class CallsTab:
 	#POSITION IN MODEL
@@ -152,9 +207,6 @@ class CallsTab:
 	NUMBER_POSITION = 1
 	DATE_POSITION = 2
 	STATUS_POSITION = 4
-
-	#unix time
-	last_refresh = 1
 	
 	#ACTUAL GUI POSTITON
 	CONTACT_COLUMN = 0
@@ -165,12 +217,12 @@ class CallsTab:
 	__type = None
 	__mark_new = False
 	
-	def __init__(self, type, last_time, mark_new = False):
+	def __init__(self, type, mark_new = False):
 		self.createList()
 		self.__type = type
 		self.__createCallsTab()
-		self.last_refresh = last_time
-		self.mark_new = mark_new
+		self.last_refresh = RefreshTime.get(self.__type)
+		self.__mark_new = mark_new
 	def getList(self):
 		return self.__list
 
@@ -239,8 +291,9 @@ class CallsTab:
 		global phoneLog
 		list = self.__list
 		type = self.__type
-		last_time = self.last_refresh
+		previous_time = datetime.fromtimestamp(RefreshTime.get(type))
 		visual_flag = self.shouldMarkNew()
+
 		if config.get('phonekitd'):
 			calls = getPhonekitCallsList(type)
 			if len(calls) == 0:
@@ -331,6 +384,7 @@ class CallsTab:
 			if parent == None:
 				last_parent_added = parent_added
 
+		RefreshTime.set(type)
 		return True										
 
 
@@ -398,29 +452,14 @@ class GeneralTab (CallsTab):
 		column0 = gtk.TreeViewColumn("Status", renderer, text=4)
 		list = self.getList()
 		list.insert_column( column0, self.__getStatusColumn() )
-	
+	def populateList(self, group_type = None):
+		if group_type == None:
+			group_type = 2
+		CallsTab.populateList(self, 2)
 	
 
 
 #GENERAL PURPOSE FUNCTIONS
-def getLastTime(file = TIME_FILE):
-	if not os.path.exists(file):
-		return datetime.fromtimestamp(0)
-	FILE = open(file,'r')
-
-	line = FILE.readline().strip('\n')
-		
-	FILE.close()
-	
-	return datetime.fromtimestamp(float(line))
-	
-def updateLastTime(file = TIME_FILE):
-	FILE = open(file,'w')
-
-	FILE.truncate(0)
-	line = FILE.write(str(time.time()))
-		
-	FILE.close()
 def useOphonekit():
 	return os.path.exists(OPHONEKITD_DB)
 	
@@ -555,7 +594,7 @@ def cb_notebook_switch_page (notebook, page, page_num):
 	elif page_num == PAGE_MISSED:
 		missed.populateList()
 	elif page_num == PAGE_GENERAL:
-		general.populateList(2)
+		general.populateList()
 #Data manipulation
 #End of GTK
 
@@ -587,14 +626,13 @@ win = gtk.Window()
 win.connect('delete-event', gtk.main_quit)
 win.set_title("Phone Log")
 
-last_time = getLastTime()
+RefreshTime = LastTime(TIME_FILE)
 
-incoming = CallsTab('incoming', last_time)
-outgoing = CallsTab('outgoing', last_time)
-missed = CallsTab('missed', last_time, True)
-general = GeneralTab("all", last_time)
+incoming = CallsTab('incoming')
+outgoing = CallsTab('outgoing')
+missed = CallsTab('missed', True)
+general = GeneralTab("all")
 
-updateLastTime()
 
 settingsTab = createSettingsTab()
 
@@ -624,12 +662,14 @@ contacts = contactsObject.RetrievePhonebook("contacts")
 incoming.populateList()
 outgoing.populateList()
 missed.populateList()
-general.populateList(2)
+general.populateList()
 
 #start
 
 
 gtk.main()
+
+RefreshTime.writeToFile()
 
 if config.get('phonekitd'):
 	database.close()
