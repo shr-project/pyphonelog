@@ -136,6 +136,7 @@ class Configuration:
 		self.setDirect('made_limit', 50)
 		self.setDirect('missed_limit', 50)
 		self.setDirect('general_limit', 50)
+		self.setDirect('lists_headers_visible', False)
 
 		self.setDirect('received_tab_name', "Received")
 		self.setDirect('made_tab_name', "Made")
@@ -285,18 +286,19 @@ class CallsTab:
 					gobject.TYPE_BOOLEAN,  #the boolean is there for coloring
 					gobject.TYPE_STRING ) #should be changed to an icon?
 					)
+		self.__list.set_property('headers-visible', config.get('lists_headers_visible'))
 	def createList(self):
 
 		self.__createTreeView()
-			
+
 		renderer = gtk.CellRendererText()
 		#change text size as well?
 		renderer.set_property('weight', 800)
 
-		column0 = gtk.TreeViewColumn("Contact", renderer, text=self.CONTACT_POSITION, weight_set=self.VISUAL_POSITION)
-		self.__list.insert_column( column0, self.__getContactColumn() )
-		column0 = gtk.TreeViewColumn("Time", renderer, text=self.DATE_POSITION, weight_set=self.VISUAL_POSITION)
-		self.__list.insert_column( column0, self.__getDateColumn())
+		contact_column = gtk.TreeViewColumn("Contact", renderer, text=self.CONTACT_POSITION, weight_set=self.VISUAL_POSITION)
+		self.__list.insert_column( contact_column, self.__getContactColumn() )
+		time_column = gtk.TreeViewColumn("Time", renderer, text=self.DATE_POSITION, weight_set=self.VISUAL_POSITION)
+		self.__list.insert_column( time_column, self.__getDateColumn())
 		
 	def __initScrolled(self):
 		tab_content = self.__list
@@ -510,7 +512,7 @@ class CallsTab:
 			tabWidget = gtk.Label(config.get(type + '_tab_name') )
 		notebook.insert_page(self.getTab(), tabWidget)
 		notebook.set_tab_label_packing(self.getTab(), True, True, gtk.PACK_START)
-class GeneralTab (CallsTab):
+class GeneralTab(CallsTab):
 	#ACTUAL GUI POSTITON
 	STATUS_COLUMN = 0	
 	CONTACT_COLUMN = 1
@@ -535,7 +537,7 @@ class GeneralTab (CallsTab):
 	
 
 
-class SignalMonitor ():
+class SignalMonitor:
 	__bus = None
 	def __init__(self, bus):
 		self.__bus = bus
