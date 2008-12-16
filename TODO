@@ -1,5 +1,4 @@
 * should the user see how many are in the group?
 * add more config options
-* add a call duration field.
 * clean the main "function" by grouping GUI init.
 * refresh at runtime (listen to release call status)

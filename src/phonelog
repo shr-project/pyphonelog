@@ -10,7 +10,7 @@ Written by Tom Hacohen. (tom@stosb.com)
 Licensed by GPLv2
 """
 
-__version__ = "0.15.3"
+__version__ = "0.15.6"
 
 import dbus
 import gobject, gtk
@@ -299,7 +299,7 @@ class CallsTab:
 			scrolled = mokoui.FingerScroll()
 		else:
 			scrolled = gtk.ScrolledWindow()
-			scrolled.set_policy(gtk.POLICY_NEVER, gtk.POLICY_AUTOMATIC)
+			scrolled.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
 
 		scrolled.add_with_viewport(tab_content)
 		return scrolled
@@ -499,8 +499,8 @@ class CallsTab:
 			tabWidget.set_from_file(image_path)
 		else:
 			tabWidget = gtk.Label(config.get(type + '_tab_name') )
-		
 		notebook.insert_page(self.getTab(), tabWidget)
+		notebook.set_tab_label_packing(self.getTab(), True, True, gtk.PACK_START)
 class GeneralTab (CallsTab):
 	#ACTUAL GUI POSTITON
 	STATUS_COLUMN = 0	
