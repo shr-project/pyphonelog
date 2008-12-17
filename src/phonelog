@@ -137,6 +137,7 @@ class Configuration:
 		self.setDirect('missed_limit', 50)
 		self.setDirect('general_limit', 50)
 		self.setDirect('lists_headers_visible', False)
+		self.setDirect('show_group_count', True)
 
 		self.setDirect('received_tab_name', "Received")
 		self.setDirect('made_tab_name', "Made")
@@ -348,6 +349,7 @@ class CallsTab:
 
 		
 		last_parent_added = None
+		child_count = 0
 		
 		for call in calls:
 			
@@ -388,14 +390,26 @@ class CallsTab:
 			missed = (status == 2)
 				
 			#check if should be grouped
+			#if grouping should stop, update the child count to the father
 			parent = None
 			if last_parent_added != None:
+				#also counts the father as a child
+				child_count += 1 
+				
 				if (((last_contact == contact) and (contact != "")) \
 						or (last_number == number))\
-					and (not sametype_group or last_status == status):
-							
+					and (not sametype_group or last_status == status):		
 					parent = last_parent_added
-				
+				else:
+					if child_count > 1:
+						#if set in config, add the '(count)' to the contact field
+						if config.get('show_group_count'):
+							current_value = model[last_parent_added][self.CONTACT_POSITION]
+							model.set_value(last_parent_added,self.CONTACT_POSITION, "%s (%d)" % (current_value, child_count))
+					child_count = 0
+			else:
+				child_count = 0
+			
 
 			#update the last_statuses so we won't rely on the GUI
 			last_contact = contact
