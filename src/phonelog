@@ -10,7 +10,7 @@ Written by Tom Hacohen. (tom@stosb.com)
 Licensed by GPLv2
 """
 
-__version__ = "0.15.6"
+__version__ = "0.15.8"
 
 import dbus
 import gobject, gtk
@@ -33,36 +33,11 @@ from dbus.mainloop.glib import DBusGMainLoop
 
 
 #constants
-"""PHONELOG_BUSNAME = "org.freesmartphone.opimd"
-PHONELOG_OBJECTPATH = "/org/freesmartphone/PIM/Log"
-PHONELOG_INTERFACE = "org.freesmartphone.PIM.Log.Calls"
-"""
-
-PHONELOG_BUSNAME = "org.smartphone.opimd"
-PHONELOG_OBJECTPATH = "/org/smartphone/PIM/Log"
-PHONELOG_INTERFACE = "org.smartphone.PIM.Log.Calls"
-
-CONTACTS_BUSNAME = 'org.freesmartphone.ogsmd'
-CONTACTS_OBJECTPATH = '/org/freesmartphone/GSM/Device'
-CONTACTS_INTERFACE = 'org.freesmartphone.GSM.SIM'
-
-PHONE_BUSNAME = 'org.freesmartphone.ogsmd'
-PHONE_OBJECTPATH = '/org/freesmartphone/GSM/Device'
-PHONE_INTERFACE = 'org.freesmartphone.GSM.Call'
-
 CONFIGURATION_DIR = "/home/root/.phonelog/"
 TIME_FILE = CONFIGURATION_DIR + "time.dat"
 CONFIGURATION_FILE = CONFIGURATION_DIR + "phonelog.conf"
 DEMO_CONFIG_PATH = "/usr/share/phonelog/skeleton/phonelog.conf"
 ICONS_PATH = "/usr/share/phonelog/icons/"
-
-#OPHONEKITD related
-OPHONEKITD_DB = "/var/db/phonelog.db"
-CALL_STATUS_INCOMING = 0
-CALL_STATUS_OUTGOING = 1
-CALL_STATUS_ACTIVE = 2
-CALL_STATUS_HELD = 3
-CALL_STATUS_RELEASE = 4
 
 #PAGES POSITIONS
 PAGE_INCOMING = 0 
@@ -313,19 +288,9 @@ class CallsTab:
 		return scrolled
 		
 	def __getCalls(self):
+		global phone_data
 		type = self.__type
-		if config.get('phonekitd'):
-			calls = getPhonekitCallsList(type)
-			if len(calls) == 0:
-				return None				
-		else:
-			global phoneLog
-			legacy_limit = typeFromLegacyDaemonType(type)
-			calls = phoneLog.GetCallsList(type, config.get(legacy_limit + "_limit"))
-			try: #hack because i send dbus empty
-				calls[0]
-			except:
-				return None
+		calls = phone_data.getCalls(type)
 		return calls
 	def populateList(self, group_type = 1):
 		"""
@@ -334,6 +299,8 @@ class CallsTab:
 		1/everything else - always group
 		2 - group from the same type only.
 		"""
+		global phone_data
+		
 		list = self.__list
 		type = self.__type
 		previous_time = datetime.fromtimestamp(RefreshTime.get(type))
@@ -354,7 +321,7 @@ class CallsTab:
 		for call in calls:
 			
 			number = call[0]
-			contact = getContact(number)
+			contact = phone_data.getContact(number)
 			timestamp = float(call[1])	
 			call_time = datetime.fromtimestamp( timestamp )
 			status = call[2]
@@ -448,7 +415,8 @@ class CallsTab:
 
 
 	def callButton_clicked (self, button):
-		global phoneObject
+		global phone_data
+		phoneObject = phone_data.getPhoneObject(systemBus)
 		list = self.__list
 		
 		number = self.__getSelectedNumber()
@@ -552,14 +520,18 @@ class GeneralTab(CallsTab):
 
 
 class SignalMonitor:
+	PHONE_BUSNAME = 'org.freesmartphone.ogsmd'
+	PHONE_OBJECTPATH = '/org/freesmartphone/GSM/Device'
+	PHONE_INTERFACE = 'org.freesmartphone.GSM.Call'
 	__bus = None
+		
 	def __init__(self, bus):
 		self.__bus = bus
 		self.__connectCallStatus()
 	def __connectCallStatus(self):
 		bus = self.__bus
-		proxy = bus.get_object(PHONE_BUSNAME,PHONE_OBJECTPATH)
-		iface = dbus.Interface(proxy, PHONE_INTERFACE)
+		proxy = bus.get_object(self.PHONE_BUSNAME,self.PHONE_OBJECTPATH)
+		iface = dbus.Interface(proxy, self.PHONE_INTERFACE)
 		iface.connect_to_signal("CallStatus", self.cb_CallStatus)
         			
 	def cb_CallStatus(self, id, status, props):
@@ -588,11 +560,150 @@ class SignalMonitor:
 		outgoing.populateList()
 		general.populateList()
 		
-#GENERAL PURPOSE FUNCTIONS
-def useOphonekit():
-	return os.path.exists(OPHONEKITD_DB)
+class PhoneData:
+	#OPHONEKITD related
+	OPHONEKITD_DB = "/var/db/phonelog.db"
+	CALL_STATUS_INCOMING = 0
+	CALL_STATUS_OUTGOING = 1
+	CALL_STATUS_ACTIVE = 2
+	CALL_STATUS_HELD = 3
+	CALL_STATUS_RELEASE = 4
+
+	"""PHONELOG_BUSNAME = "org.freesmartphone.opimd"
+	PHONELOG_OBJECTPATH = "/org/freesmartphone/PIM/Log"
+	PHONELOG_INTERFACE = "org.freesmartphone.PIM.Log.Calls"
+	"""
 	
+	PHONELOG_BUSNAME = "org.smartphone.opimd"
+	PHONELOG_OBJECTPATH = "/org/smartphone/PIM/Log"
+	PHONELOG_INTERFACE = "org.smartphone.PIM.Log.Calls"
+
+	CONTACTS_BUSNAME = 'org.freesmartphone.ogsmd'
+	CONTACTS_OBJECTPATH = '/org/freesmartphone/GSM/Device'
+	CONTACTS_INTERFACE = 'org.freesmartphone.GSM.SIM'
+
+	PHONE_BUSNAME = 'org.freesmartphone.ogsmd'
+	PHONE_OBJECTPATH = '/org/freesmartphone/GSM/Device'
+	PHONE_INTERFACE = 'org.freesmartphone.GSM.Call'
+
+	LEGACY_TYPE = 0
+	OPHONEKITD_TYPE = 1
+	__phonelog_type = OPHONEKITD_TYPE
+	__database = None
+	__phoneLog = None
+	__contacts = None
 	
+	def __init__(self, systemBus):
+		if config.get('phonekitd'):
+			if not os.path.exists(self.OPHONEKITD_DB):
+				print "Can't Find " + self.OPHONEKITD_DB + " Falling back to the daemon"
+				self.useLegacy(systemBus)
+				config.setDirect('phonekitd', False)
+			self.useOphonekitd()	
+		else:
+			self.useLegacy(systemBus)
+	def useLegacy(self, systemBus):
+		self.__phonelog_type = self.LEGACY_TYPE
+		self.__phoneLog = self.getPhoneLogObject(systemBus)
+	def useOphonekitd(self):
+		self.__phonelog_type = self.OPHONEKITD_TYPE
+		self.__database = sqlite3.connect(self.OPHONEKITD_DB)
+	def initContacts(self):
+		contactsObject = self.getContactsObject(systemBus)
+		self.__contacts = contactsObject.RetrievePhonebook("contacts")
+	def getContact(self, number):
+		contacts = self.__contacts
+		if contacts == None:
+			return ""
+			
+		for contact in contacts:
+			if self.comparePhoneNumber(contact[2], number):
+				return contact[1]
+		return ""
+
+	def comparePhoneNumber(self, number1, number2):
+		'''
+		Compares two phone numbers. They are considered equal if:
+		a) One does not contain digits, and they are equal as strings
+		or
+		b) Both start with a "+", and all following digits are equal
+		or
+		c) At least one of them does not start with a "+", and the
+		   last 7 digits are equal
+		'''
+		digits1 = filter (lambda c: c.isdigit() or c == '+', number1)
+		digits2 = filter (lambda c: c.isdigit() or c == '+', number2)
+
+		if digits1 == '' or digits2 == '':
+			return number1 == number2
+		if digits1[0] == digits2[0] == '+':
+			return digits1 == digits2
+		else:
+			return digits1[-7:] == digits2[-7:]
+	def getPhonekitCallsList(self, type):
+		database = self.__database
+		get_fields = "number, strftime('%s',startTime), direction, duration"
+		#if type == "missed":
+		#	calls = database.execute("SELECT %s FROM missed_calls WHERE direction = ? ORDER BY startTime DESC LIMIT ?" % (get_fields,  ) ,\
+		#		(CALL_STATUS_INCOMING, config.get('missed_limit'))).fetchall()
+		if type == "missed":
+			calls = database.execute("SELECT %s FROM calls WHERE direction = ? AND activeTime IS NULL ORDER BY startTime DESC LIMIT ?" % (get_fields, ), \
+			(self.CALL_STATUS_INCOMING, config.get('missed_limit'))).fetchall()
+		elif type == "incoming":
+			calls = database.execute("SELECT %s FROM calls WHERE direction = ? AND activeTime IS NOT NULL ORDER BY startTime DESC LIMIT ?" % (get_fields, ), \
+			(self.CALL_STATUS_INCOMING, config.get('received_limit'))).fetchall()
+		elif type == "outgoing":
+			calls = database.execute("SELECT %s FROM calls WHERE direction = ? ORDER BY startTime DESC LIMIT ?" % (get_fields, ), \
+				(self.CALL_STATUS_OUTGOING, config.get('made_limit'))).fetchall()
+		elif type == "all":
+			calls = database.execute("SELECT %s FROM calls ORDER BY startTime DESC LIMIT ?" % (get_fields, ), \
+				(config.get('general_limit'),) ).fetchall()
+		else:
+			return None
+		return calls
+		
+
+	def clean(self):
+		if self.__database != None:
+			self.__database.close()
+	def getCalls(self, type):
+		if config.get('phonekitd'):
+			calls = self.getPhonekitCallsList(type)
+			if len(calls) == 0:
+				return None				
+		else:
+			legacy_limit = typeFromLegacyDaemonType(type)
+			calls = self.__phoneLog.GetCallsList(type, config.get(legacy_limit + "_limit"))
+			try: #hack because i send dbus empty
+				calls[0]
+			except:
+				return None
+		return calls
+	def getDbusObject (self, bus, busname , objectpath , interface):
+		dbusObject = bus.get_object(busname, objectpath)
+		return dbus.Interface(dbusObject, dbus_interface=interface)
+	def getPhoneLogObject (self, bus):
+		return self.getDbusObject (bus,
+				      self.PHONELOG_BUSNAME,
+				      self.PHONELOG_OBJECTPATH,
+				      self.PHONELOG_INTERFACE
+				     )
+
+	def getContactsObject (self, bus):
+		return self.getDbusObject (bus,
+				      self.CONTACTS_BUSNAME,
+				      self.CONTACTS_OBJECTPATH,
+				      self.CONTACTS_INTERFACE
+				     )
+
+	def getPhoneObject (self, bus):
+		return self.getDbusObject (bus,
+				      self.PHONE_BUSNAME,
+				      self.PHONE_OBJECTPATH,
+				      self.PHONE_INTERFACE
+				     )
+
+#LEGACY SUPPORT FUNCTIONS
 def stringToTabNumber(string):
 	if string.lower() == "received":
 		return PAGE_INCOMING
@@ -613,76 +724,7 @@ def typeFromLegacyDaemonType(type):
 		return 'general'
 	else:
 		return "received"
-#END OF GENERAL PURPOSE FUNCTIONS
-
-
-#GET/EDIT DATA FUNCTIONS
-def getContact(number):
-	global contacts
-	for contact in contacts:
-		if comparePhoneNumber(contact[2], number):
-			return contact[1]
-	return ""
-
-def comparePhoneNumber(number1, number2):
-	'''
-	Compares two phone numbers. They are considered equal if:
-	a) One does not contain digits, and they are equal as strings
-	or
-	b) Both start with a "+", and all following digits are equal
-	or
-	c) At least one of them does not start with a "+", and the
-	   last 7 digits are equal
-	'''
-	digits1 = filter (lambda c: c.isdigit() or c == '+', number1)
-	digits2 = filter (lambda c: c.isdigit() or c == '+', number2)
-
-	if digits1 == '' or digits2 == '':
-		return number1 == number2
-	if digits1[0] == digits2[0] == '+':
-		return digits1 == digits2
-	else:
-		return digits1[-7:] == digits2[-7:]
-		
-def getPhonekitCallsList(type):
-	get_fields = "number, strftime('%s',startTime), direction, duration"
-	#if type == "missed":
-	#	calls = database.execute("SELECT %s FROM missed_calls WHERE direction = ? ORDER BY startTime DESC LIMIT ?" % (get_fields,  ) ,\
-	#		(CALL_STATUS_INCOMING, config.get('missed_limit'))).fetchall()
-	if type == "missed":
-		calls = database.execute("SELECT %s FROM calls WHERE direction = ? AND activeTime IS NULL ORDER BY startTime DESC LIMIT ?" % (get_fields, ), \
-		(CALL_STATUS_INCOMING, config.get('missed_limit'))).fetchall()
-	elif type == "incoming":
-		calls = database.execute("SELECT %s FROM calls WHERE direction = ? AND activeTime IS NOT NULL ORDER BY startTime DESC LIMIT ?" % (get_fields, ), \
-		(CALL_STATUS_INCOMING, config.get('received_limit'))).fetchall()
-	elif type == "outgoing":
-		calls = database.execute("SELECT %s FROM calls WHERE direction = ? ORDER BY startTime DESC LIMIT ?" % (get_fields, ), \
-			(CALL_STATUS_OUTGOING, config.get('made_limit'))).fetchall()
-	elif type == "all":
-		calls = database.execute("SELECT %s FROM calls ORDER BY startTime DESC LIMIT ?" % (get_fields, ), \
-			(config.get('general_limit'),) ).fetchall()
-	else:
-		return None
-	return calls
-	
-
-#END OF GET/EDIT DATA
-
-#DBUS FUNCTIONS
-def getDbusObject (bus, busname , objectpath , interface):
-	dbusObject = bus.get_object(busname, objectpath)
-	return dbus.Interface(dbusObject, dbus_interface=interface)
-def getPhoneLogObject (bus, busname = PHONELOG_BUSNAME, objectpath = PHONELOG_OBJECTPATH, interface = PHONELOG_INTERFACE):
-	return getDbusObject (bus, busname , objectpath , interface)
-
-def getContactsObject (bus, busname = CONTACTS_BUSNAME, objectpath = CONTACTS_OBJECTPATH, interface = CONTACTS_INTERFACE):
-	return getDbusObject (bus, busname , objectpath , interface)
-
-def getPhoneObject (bus, busname = PHONE_BUSNAME, objectpath = PHONE_OBJECTPATH, interface = PHONE_INTERFACE):
-	return getDbusObject (bus, busname , objectpath , interface)
-	
-#END OF DBUS FUNCTIONS
-
+#END OF LEGACY FUNCTIONS
 
 def quitMainloop(*a):
 	mainloop.quit()
@@ -691,40 +733,25 @@ def quitMainloop(*a):
 ################# MAIN ######################
 #############################################
 
-DBusGMainLoop(set_as_default=True)
-mainloop = gobject.MainLoop()
-
 #create the config dir if doesn't exist.
 if not os.path.exists(CONFIGURATION_DIR):
 	os.mkdir(CONFIGURATION_DIR)
 
+#Init global vars
+DBusGMainLoop(set_as_default=True)
+mainloop = gobject.MainLoop()
+
 systemBus = dbus.SystemBus()
 config = Configuration(CONFIGURATION_FILE)
-
-#init db
-
-if config.get('phonekitd'):
-	if not os.path.exists(OPHONEKITD_DB):
-		print "Can't Find " + OPHONEKITD_DB + " Falling back to the daemon"
-		phoneLog = getPhoneLogObject(systemBus)
-		config.setDirect('phonekitd', False)
-	database = sqlite3.connect(OPHONEKITD_DB)	
-else:
-	phoneLog = getPhoneLogObject(systemBus)
-	
-
-#init dbus
-contactsObject = getContactsObject(systemBus)
-phoneObject = getPhoneObject(systemBus)
+phone_data = PhoneData(systemBus)
+RefreshTime = LastTime(TIME_FILE)
+RefreshMonitor = SignalMonitor(systemBus)
 
 #init gtk
 win = gtk.Window()
 win.connect('delete-event', quitMainloop )
 win.set_title("Phone Log")
 
-
-RefreshTime = LastTime(TIME_FILE)
-RefreshMonitor = SignalMonitor(systemBus)
 
 incoming = CallsTab('incoming')
 outgoing = CallsTab('outgoing')
@@ -747,7 +774,7 @@ notebook.set_current_page(startup_page)
 
 
 #retrieve contacts
-contacts = contactsObject.RetrievePhonebook("contacts")
+phone_data.initContacts()
 
 incoming.populateList()
 outgoing.populateList()
@@ -760,5 +787,4 @@ mainloop.run()
 
 RefreshTime.writeToFile()
 
-if config.get('phonekitd'):
-	database.close()
+phone_data.clean()
