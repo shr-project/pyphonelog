@@ -410,7 +410,14 @@ class CallsTab:
 
 			if parent == None:
 				last_parent_added = parent_added
-
+		#ugly hack for the last now showing counts bug
+		if child_count > 1:
+			child_count += 1
+			#if set in config, add the '(count)' to the contact field
+			if config.get('show_group_count'):
+				current_value = model[last_parent_added][self.CONTACT_POSITION]
+				model.set_value(last_parent_added,self.CONTACT_POSITION, "%s (%d)" % (current_value, child_count))
+				
 		#Set last refresh time
 		RefreshTime.set(type)
 		return True										
