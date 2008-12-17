@@ -132,6 +132,8 @@ class Configuration:
 		self.setDirect('received_mark', "↓")
 		self.setDirect('made_mark', "↑")
 		self.setDirect('missed_mark', "↺")
+
+		self.setDirect('change_rotate_layout', True)
 		return
 	def __extractBoolean(self, string):
 		low_case = string.lower()
@@ -729,6 +731,12 @@ def typeFromLegacyDaemonType(type):
 def quitMainloop(*a):
 	mainloop.quit()
 
+def cb_win_resize(window, rect, notebook):
+	upright = (rect.height > rect.width)
+	if upright:
+		notebook.set_property("tab-pos", gtk.POS_TOP)
+	else:
+		notebook.set_property("tab-pos", gtk.POS_LEFT)
 #############################################
 ################# MAIN ######################
 #############################################
@@ -749,7 +757,12 @@ RefreshMonitor = SignalMonitor(systemBus)
 
 #init gtk
 win = gtk.Window()
+notebook= gtk.Notebook()
 win.connect('delete-event', quitMainloop )
+
+if config.get('change_rotate_layout'):
+	win.connect('size-allocate', cb_win_resize, notebook) #redsign on resize
+
 win.set_title("Phone Log")
 
 
@@ -758,7 +771,7 @@ outgoing = CallsTab('outgoing')
 missed = CallsTab('missed', True)
 general = GeneralTab('all')
 
-notebook= gtk.Notebook()
+
 
 win.add (notebook)
 
