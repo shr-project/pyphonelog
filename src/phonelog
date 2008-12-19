@@ -12,23 +12,23 @@ Licensed by GPLv2
 
 __version__ = "0.15.8"
 
-import dbus
-import gobject, gtk
-from datetime import datetime
+
 import time
 import os.path
-import sqlite3
 import shutil
 import re
+from datetime import datetime
+
+import dbus
+import gobject, gtk
+import sqlite3
+from dbus.mainloop.glib import DBusGMainLoop
 
 try:
 	import mokoui
 	use_mokoui = True
 except:
 	use_mokoui = False
-
-
-from dbus.mainloop.glib import DBusGMainLoop
 
 
 #constants
@@ -112,6 +112,7 @@ class Configuration:
 		self.setDirect('general_limit', 50)
 		self.setDirect('lists_headers_visible', False)
 		self.setDirect('show_group_count', True)
+		self.setDirect('buttons_height', 80)
 
 		self.setDirect('received_tab_name', "Received")
 		self.setDirect('made_tab_name', "Made")
@@ -242,20 +243,28 @@ class CallsTab:
 	def __createCallsTab(self):
 		page = gtk.VBox()
 		page.pack_start( self.__initScrolled() )
-		buttons = gtk.HBox()
-		page.pack_start(buttons, False, padding = 1)
+		align = gtk.Alignment(1,1,1,1)
+		
+		buttons = gtk.HBox(homogeneous=True)
+		align.add(buttons)
+		page.pack_start(align, False, padding = 3)
 
+		buttons_height = config.get('buttons_height')
+		
 		callButton = gtk.Button("Call")
 		callButton.connect ("clicked", self.callButton_clicked)
+		callButton.set_size_request(-1,buttons_height)
 
-		numberButton = gtk.Button("Show Numbers")
+		numberButton = gtk.Button("Numbers")
 		numberButton.connect ("clicked", self.numberButton_clicked)
+		numberButton.set_size_request(-1,buttons_height)
 
-		durationButton = gtk.Button("Show Duration")
+		durationButton = gtk.Button("Duration")
 		durationButton.connect ("clicked", self.durationButton_clicked)
-
+		durationButton.set_size_request(-1,buttons_height)
+		
 		buttons.pack_start(callButton, True, padding = 1)
-		buttons.pack_start(numberButton, True, padding = 1)
+		buttons.pack_start(numberButton, True, padding = 3)
 		buttons.pack_start(durationButton, True, padding = 1)
 		
 		self.__tab = page
@@ -449,11 +458,11 @@ class CallsTab:
 		
 		if self.__contact_show_column == self.CONTACT_POSITION:
 			self.__contact_show_column = self.NUMBER_POSITION
-			button_label = "Show Names"
+			button_label = "Names"
 
 		else:
 			self.__contact_show_column = self.CONTACT_POSITION
-			button_label = "Show Numbers"
+			button_label = "Numbers"
 			
 		button.set_label(button_label)
 		contact_column.set_attributes(renderer, text=self.__contact_show_column)
@@ -471,11 +480,11 @@ class CallsTab:
 		
 		if self.__date_show_column == self.DATE_POSITION:
 			self.__date_show_column = self.DURATION_POSITION
-			button_label = "Show Date"
+			button_label = "Date"
 
 		else:
 			self.__date_show_column = self.DATE_POSITION
-			button_label = "Show Duration"
+			button_label = "Duration"
 			
 		button.set_label(button_label)
 		date_column.set_attributes(renderer, text=self.__date_show_column)
@@ -751,15 +760,30 @@ def timeToString(call_time):
 	else:
 		return call_time.strftime(config.get('date_format') + " " + config.get('time_format') )
 
-def quitMainloop(*a):
+def quitMainloop(*dump):
 	mainloop.quit()
 
+#THIS GLOBAL VAR IS PART OF THIS FUNCTION
+upright = None
 def cb_win_resize(window, rect, notebook):
-	upright = (rect.height > rect.width)
+	global upright
+	#update upright, and no need to go further if
+	#we are already in the same position
+	tmp_upright = (rect.height > rect.width)
+	if tmp_upright == upright:
+		return
+	else:
+		upright = tmp_upright
+	
 	if upright:
+		if config.get('debug'):
+			print "Upright"
 		notebook.set_property("tab-pos", gtk.POS_TOP)
 	else:
+		if config.get('debug'):
+			print "Rotated"
 		notebook.set_property("tab-pos", gtk.POS_LEFT)
+
 #############################################
 ################# MAIN ######################
 #############################################
@@ -788,6 +812,7 @@ notebook= gtk.Notebook()
 win.add (notebook)
 win.connect('delete-event', quitMainloop )
 win.set_title("Phone Log")
+win.set_default_size(480,640)
 
 if config.get('change_rotate_layout'):
 	win.connect('size-allocate', cb_win_resize, notebook) #redsign on resize
@@ -821,7 +846,6 @@ missed.populateList()
 general.populateList()
 
 #end of inits.
-
 
 mainloop.run()
 
