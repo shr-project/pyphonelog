@@ -2,3 +2,4 @@
 * make refresh at runtime refresh only the correct type, and fix the possible race condition
 * change the gui layout? (maybe something more like moko-contacts?)
 * add duration col when in landscape mode?
+* figure out the bold bug

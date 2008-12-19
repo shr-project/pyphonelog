@@ -274,11 +274,12 @@ class CallsTab:
 
 		renderer = gtk.CellRendererText()
 		#change text size as well?
-		renderer.set_property('weight', 800)
+		#renderer.set_property('weight', 800)
+		renderer.set_property('foreground', 'red')
 
-		contact_column = gtk.TreeViewColumn("Contact", renderer, text=self.CONTACT_POSITION, weight_set=self.VISUAL_POSITION)
+		contact_column = gtk.TreeViewColumn("Contact", renderer, text=self.CONTACT_POSITION, foreground_set=self.VISUAL_POSITION)
 		self.__list.insert_column( contact_column, self.__getContactColumn() )
-		time_column = gtk.TreeViewColumn("Time", renderer, text=self.DATE_POSITION, weight_set=self.VISUAL_POSITION)
+		time_column = gtk.TreeViewColumn("Time", renderer, text=self.DATE_POSITION, foreground_set=self.VISUAL_POSITION)
 		self.__list.insert_column( time_column, self.__getDateColumn())
 		
 	def __initScrolled(self):
