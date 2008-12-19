@@ -31,7 +31,6 @@ except:
 from dbus.mainloop.glib import DBusGMainLoop
 
 
-
 #constants
 CONFIGURATION_DIR = "/home/root/.phonelog/"
 TIME_FILE = CONFIGURATION_DIR + "time.dat"
@@ -128,12 +127,16 @@ class Configuration:
 		self.setDirect('general_tab_image_file', "general.png")
 		
 		self.setDirect('startup_tab', "missed")
-		self.setDirect('time_format', "%d-%m-%Y %H:%M:%S")
+		self.setDirect('date_format', "%d-%m-%Y")
+		self.setDirect('time_format', "%H:%M:%S")
 		self.setDirect('received_mark', "↓")
 		self.setDirect('made_mark', "↑")
 		self.setDirect('missed_mark', "↺")
 
 		self.setDirect('change_rotate_layout', True)
+
+
+		self.setDirect('debug', False)
 		return
 	def __extractBoolean(self, string):
 		low_case = string.lower()
@@ -401,7 +404,7 @@ class CallsTab:
 			
 			parent_added = model.append(parent, ( contact , 
 					number ,
-					call_time.strftime(config.get('time_format') ) ,
+					timeToString(call_time) ,
 					active_time, 
 					visual_flag and (call_time > previous_time) ,
 					status
@@ -735,6 +738,18 @@ def typeFromLegacyDaemonType(type):
 		return "received"
 #END OF LEGACY FUNCTIONS
 
+def timeToString(call_time):
+	now = datetime.now().timetuple()
+	time_tuple = call_time.timetuple()
+	#check if it's today
+	if (now[0] == time_tuple[0]) and \
+	   (now[1] == time_tuple[1]) and \
+	   (now[2] == time_tuple[2]):
+
+		return "Today, " + call_time.strftime(config.get('time_format'))
+	else:
+		return call_time.strftime(config.get('date_format') + " " + config.get('time_format') )
+
 def quitMainloop(*a):
 	mainloop.quit()
 
@@ -748,11 +763,11 @@ def cb_win_resize(window, rect, notebook):
 ################# MAIN ######################
 #############################################
 
+print "Phonelog"
 #create the config dir if doesn't exist.
 if not os.path.exists(CONFIGURATION_DIR):
 	os.mkdir(CONFIGURATION_DIR)
 
-#Init global vars
 DBusGMainLoop(set_as_default=True)
 mainloop = gobject.MainLoop()
 
@@ -762,15 +777,20 @@ phone_data = PhoneData(systemBus)
 RefreshTime = LastTime(TIME_FILE)
 RefreshMonitor = SignalMonitor(systemBus)
 
-#init gtk
+
+if config.get('debug'):
+	print "Initialized global vars"
+	print "Initializing gtk interface"
+
 win = gtk.Window()
 notebook= gtk.Notebook()
+win.add (notebook)
 win.connect('delete-event', quitMainloop )
+win.set_title("Phone Log")
 
 if config.get('change_rotate_layout'):
 	win.connect('size-allocate', cb_win_resize, notebook) #redsign on resize
 
-win.set_title("Phone Log")
 
 
 incoming = CallsTab('incoming')
@@ -779,19 +799,17 @@ missed = CallsTab('missed', True)
 general = GeneralTab('all')
 
 
-
-win.add (notebook)
-
 incoming.addToTab(notebook)
 outgoing.addToTab(notebook)
 missed.addToTab(notebook)
 general.addToTab(notebook)
 
+if config.get('debug'):
+	print "Showing main window"
 win.show_all()
 
 startup_page = stringToTabNumber( config.get('startup_tab') )
 notebook.set_current_page(startup_page)
-
 
 #retrieve contacts
 phone_data.initContacts()
@@ -801,10 +819,12 @@ outgoing.populateList()
 missed.populateList()
 general.populateList()
 
-#start
+#end of inits.
+
 
 mainloop.run()
 
-RefreshTime.writeToFile()
 
+#clean and exit
+RefreshTime.writeToFile()
 phone_data.clean()

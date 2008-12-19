@@ -1,5 +1,4 @@
 * add more config options
-* clean the main "function" by grouping GUI init.
 * make refresh at runtime refresh only the correct type, and fix the possible race condition
 * change the gui layout? (maybe something more like moko-contacts?)
-* optimize boot time? 
+* add duration col when in landscape mode?
