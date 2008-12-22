@@ -3,4 +3,5 @@
 * change the gui layout? (maybe something more like moko-contacts?)
 * add duration col when in landscape mode?
 * figure out the bold bug
-* change the size of the bottom 3 buttons to be the same
+* skip broken phonelog db entries?
+* workaronud the "hidden number" bug.

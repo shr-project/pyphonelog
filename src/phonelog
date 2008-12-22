@@ -10,7 +10,7 @@ Written by Tom Hacohen. (tom@stosb.com)
 Licensed by GPLv2
 """
 
-__version__ = "0.15.8"
+__version__ = "0.15.9"
 
 
 import time
@@ -135,7 +135,7 @@ class Configuration:
 		self.setDirect('missed_mark', "↺")
 
 		self.setDirect('change_rotate_layout', True)
-
+		self.setDirect("suppressed_name", "NULL")
 
 		self.setDirect('debug', False)
 		return
@@ -353,23 +353,23 @@ class CallsTab:
 			#hack because of the (frameworks?) double quotes bug
 			number = number.strip('"')
 			
-			#handle grouping types
-			sametype_group = False
-			if group_type == 0:
-				#if we don't want to group, parent is always None
-				last_parent_added = None
-			elif group_type == 2:
-				sametype_group = True
-				#HACK FOR THE GENERAL LIST
-				if config.get('phonekitd'):
-					if active_time == "00:00":
-						status += 2
-						#Usually it shouldn't be changed back, things have
-						#to change before that can happen
-						if status == 3:
-							status = 1
+			#HACK FOR THE GENERAL LIST
+			if config.get('phonekitd'):
+				if active_time == "00:00":
+					status += 2
+					#Usually it shouldn't be changed back, things have
+					#to change before that can happen
+					if status == 3:
+						status = 1
 
 			missed = (status == 2)
+
+			#don't group supressed numbers
+			#and make the contact Unknown Number
+			if number == "*****":
+				last_parent_added = None
+				contact = config.get("suppressed_name")
+
 				
 			#check if should be grouped
 			#if grouping should stop, update the child count to the father
@@ -380,7 +380,7 @@ class CallsTab:
 				
 				if (((last_contact == contact) and (contact != "")) \
 						or (last_number == number))\
-					and (not sametype_group or last_status == status):		
+					and (last_status == status):		
 					parent = last_parent_added
 				else:
 					if child_count > 1:
@@ -783,6 +783,7 @@ def cb_win_resize(window, rect, notebook):
 		if config.get('debug'):
 			print "Rotated"
 		notebook.set_property("tab-pos", gtk.POS_LEFT)
+
 
 #############################################
 ################# MAIN ######################
