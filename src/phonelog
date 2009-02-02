@@ -32,7 +32,7 @@ except:
 
 
 #constants
-CONFIGURATION_DIR = "/home/root/.phonelog/"
+CONFIGURATION_DIR = os.path.join(os.path.expanduser('~'), '.phonelog')
 TIME_FILE = CONFIGURATION_DIR + "time.dat"
 CONFIGURATION_FILE = CONFIGURATION_DIR + "phonelog.conf"
 DEMO_CONFIG_PATH = "/usr/share/phonelog/skeleton/phonelog.conf"
