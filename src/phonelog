@@ -5,7 +5,8 @@
 This is a phonelog GTK+ GUI, designed to use with a custom daemon,
 the SHR daemon, and when ready, opimd.
 
-Written by Tom Hacohen. (tom@stosb.com)
+Written by Tom Hacohen. (tom@stosb.com), 
+contributions from Sebastian Spaeth (Sebastian@SSpaeth.de)
 
 Licensed by GPLv2
 """
@@ -13,7 +14,7 @@ Licensed by GPLv2
 __version__ = "0.15.9"
 
 
-import time
+import time, ConfigParser
 import os.path
 import shutil
 import re
@@ -34,8 +35,8 @@ except:
 #constants
 CONFIGURATION_DIR = os.path.join(os.path.expanduser('~'), '.phonelog')
 TIME_FILE = CONFIGURATION_DIR + "time.dat"
-CONFIGURATION_FILE = CONFIGURATION_DIR + "phonelog.conf"
-DEMO_CONFIG_PATH = "/usr/share/phonelog/skeleton/phonelog.conf"
+CONFIGURATION_FILE = os.path.join(CONFIGURATION_DIR,'phonelog.conf')
+DEFAULT_CONFIG_PATH = "/usr/share/phonelog/skeleton/phonelog.conf"
 ICONS_PATH = "/usr/share/phonelog/icons/"
 
 #PAGES POSITIONS
@@ -44,164 +45,6 @@ PAGE_OUTGOING = 1
 PAGE_MISSED = 2
 PAGE_GENERAL = 3
 PAGE_SETTINGS = 4
-
-class Configuration:
-	__configuration = None
-	__filename = None
-	def __init__(self, file):
-		"""
-		Reads the signal list from the file given as parameter
-		(to launch, interface, busname, path, signal, rules) from to_launch=interface;busname;path;signal;rule1,rule2...
-		"""
-		self.initConfiguration()
-		self.setFilename(file)
-		self.setDefault()
-		
-		if not os.path.exists(file):
-			shutil.copy(DEMO_CONFIG_PATH, file)
-
-		print "Using configuration:"
-		print "*********************"
-		self.extractFromFile()		
-		print "*********************"
-		print "End of configuration"
-			
-	def initConfiguration(self):
-		self.__configuration = dict()
-	def extractFromFile(self):
-		file = self.getFilename()
-		regex = re.compile('^\s*([^=\s]*)\s*=\s*(.*)\s*\n$')
-		comment_regex = re.compile('^\s*#')
-		FILE = open(file,'r')
-
-		
-		for line in FILE:
-			if not comment_regex.match(line):
-				parsed = regex.match(line)
-				#ignore bad config lines
-				if parsed != None:
-					print line
-					self.set(parsed.group(1), parsed.group(2))
-		FILE.close()
-		
-	def setDirect(self, name, value):
-		self.__configuration[name] = value
-	def set(self, name, string):
-		boolean_value = self.__extractBoolean(string)
-		if boolean_value != None:
-			self.setDirect(name, boolean_value)
-			return
-
-		numeric_value = self.__extractNumeric(string)
-		if numeric_value != None:
-			self.setDirect(name, numeric_value)
-			return
-		else:
-			self.setDirect(name, string)
-			return
-	def get(self, name):
-		if name in self.__configuration:
-			return self.__configuration[name]
-		else:
-			return None
-	def setDefault(self):
-		self.setDirect('phonekitd', True)
-		self.setDirect('received_limit', 50)
-		self.setDirect('made_limit', 50)
-		self.setDirect('missed_limit', 50)
-		self.setDirect('general_limit', 50)
-		self.setDirect('lists_headers_visible', False)
-		self.setDirect('show_group_count', True)
-		self.setDirect('buttons_height', 80)
-
-		self.setDirect('received_tab_name', "Received")
-		self.setDirect('made_tab_name', "Made")
-		self.setDirect('missed_tab_name', "Missed")
-		self.setDirect('general_tab_name', "General")
-		self.setDirect('received_tab_type', 'icon')
-		self.setDirect('made_tab_type', 'icon')
-		self.setDirect('missed_tab_type', 'icon')
-		self.setDirect('general_tab_type', 'icon')
-		self.setDirect('received_tab_image_file', "received.png")
-		self.setDirect('made_tab_image_file', "made.png")
-		self.setDirect('missed_tab_image_file', "missed.png")
-		self.setDirect('general_tab_image_file', "general.png")
-		
-		self.setDirect('startup_tab', "missed")
-		self.setDirect('date_format', "%d-%m-%Y")
-		self.setDirect('time_format', "%H:%M:%S")
-		self.setDirect('received_mark', "↓")
-		self.setDirect('made_mark', "↑")
-		self.setDirect('missed_mark', "↺")
-
-		self.setDirect('change_rotate_layout', True)
-		self.setDirect("suppressed_name", "NULL")
-
-		self.setDirect('debug', False)
-		return
-	def __extractBoolean(self, string):
-		low_case = string.lower()
-		if low_case == "false":
-			return False
-		elif low_case == "true":
-			return True
-		else:
-			return None
-	def __extractNumeric(self, string):
-		if re.match('^\d+$',string):
-			return int(string)
-		elif re.match('^\d+.?\d*$',string):
-			return float(string)
-		else:
-			return None
-
-
-	def setFilename(self, file):
-		self.__filename = file
-	def getFilename(self):
-		return self.__filename
-	def getDictionary(self):
-		return self.__configuration
-	def writeToFile(self):
-		file = self.getFilename()
-		FILE = open(file,'w')
-		FILE.truncate(0)
-		
-		for option in self.getDictionary():
-			FILE.write(option + ' = ' + str(self.get(option)) + "\n")
-			
-		FILE.close()
-
-class LastTime(Configuration):
-	def __init__(self, file):
-		self.setFilename(file)
-		self.initConfiguration()
-		self.setDefault()
-		if os.path.exists(file):
-			print "Last viewed times:"
-			print "*********************"
-			self.extractFromFile()		
-			print "*********************"
-			print "End of times"		
-		else:
-			self.writeToFile()	
-	def setDefault(self):
-		self.set('incoming', 1)
-		self.set('outgoing', 1)
-		self.set('missed', 1)
-		self.set('all', 1)
-	def get(self, type):
-		last_time = Configuration.get(self, type)
-		if last_time == None:
-			self.set(type)
-			last_time = self.get(type)
-		return last_time
-	def set(self, type, last_time = None):
-		if last_time == None:
-			last_time = time.time()
-		else:
-			last_time = float( last_time )
-		self.setDirect(type, last_time )
 
 class CallsTab:
 	#POSITION IN MODEL
@@ -221,12 +64,17 @@ class CallsTab:
 	__tab = None
 	__type = None
 	__mark_new = False
+        conf = None #inited with ConfigParser object once!
 	
-	def __init__(self, type, mark_new = False):
+	def __init__(self, type, mark_new = False, conf=None):
+                # init the ConfigParser object once, bail out if failing.
+                if CallsTab.conf == None:
+                  CallsTab.conf = conf
+                assert CallsTab.conf != None
 		self.createList()
 		self.__type = type
 		self.__createCallsTab()
-		self.last_refresh = RefreshTime.get(self.__type)
+		self.last_refresh = CallsTab.conf.getfloat('viewlog',self.__type)
 		self.__mark_new = mark_new
 	def getList(self):
 		return self.__list
@@ -249,7 +97,7 @@ class CallsTab:
 		align.add(buttons)
 		page.pack_start(align, False, padding = 3)
 
-		buttons_height = config.get('buttons_height')
+		buttons_height = CallsTab.conf.getint('phonelog','buttons_height')
 		
 		callButton = gtk.Button("Call")
 		callButton.connect ("clicked", self.callButton_clicked)
@@ -276,7 +124,7 @@ class CallsTab:
 					gobject.TYPE_BOOLEAN,  #the boolean is there for coloring
 					gobject.TYPE_STRING ) #should be changed to an icon?
 					)
-		self.__list.set_property('headers-visible', config.get('lists_headers_visible'))
+		self.__list.set_property('headers-visible', CallsTab.conf.getboolean('phonelog','lists_headers_visible'))
 	def createList(self):
 
 		self.__createTreeView()
@@ -318,7 +166,7 @@ class CallsTab:
 		
 		list = self.__list
 		type = self.__type
-		previous_time = datetime.fromtimestamp(RefreshTime.get(type))
+		previous_time = datetime.fromtimestamp(CallsTab.conf.getfloat('viewlog', type))
 		visual_flag = self.shouldMarkNew()
 
 		calls = self.__getCalls()
@@ -341,7 +189,7 @@ class CallsTab:
 			call_time = datetime.fromtimestamp( timestamp )
 			status = call[2]
 
-			if config.get('phonekitd'):
+			if CallsTab.conf.getboolean('phonelog','phonekitd'):
 				active_time = call[3]
 
 				#untill the change will be coded in the daemon
@@ -354,7 +202,7 @@ class CallsTab:
 			number = number.strip('"')
 			
 			#HACK FOR THE GENERAL LIST
-			if config.get('phonekitd'):
+			if CallsTab.conf.getboolean('phonelog','phonekitd'):
 				if active_time == "00:00":
 					status += 2
 					#Usually it shouldn't be changed back, things have
@@ -368,7 +216,7 @@ class CallsTab:
 			#and make the contact Unknown Number
 			if number == "*****":
 				last_parent_added = None
-				contact = config.get("suppressed_name")
+				contact = CallsTab.conf.get('phonelog',"suppressed_name")
 
 				
 			#check if should be grouped
@@ -385,7 +233,7 @@ class CallsTab:
 				else:
 					if child_count > 1:
 						#if set in config, add the '(count)' to the contact field
-						if config.get('show_group_count'):
+						if CallsTab.conf.getboolean('phonelog','show_group_count'):
 							current_value = model[last_parent_added][self.CONTACT_POSITION]
 							model.set_value(last_parent_added,self.CONTACT_POSITION, "%s (%d)" % (current_value, child_count))
 					child_count = 0
@@ -405,11 +253,11 @@ class CallsTab:
 			
 			#style status
 			if status == 0:
-				status = config.get('received_mark')
+				status = CallsTab.conf.get('phonelog','received_mark')
 			elif status == 1:
-				status = config.get('made_mark')
+				status = CallsTab.conf.get('phonelog','made_mark')
 			elif status == 2:
-				status = config.get('missed_mark')
+				status = CallsTab.conf.get('phonelog','missed_mark')
 				
 			
 			parent_added = model.append(parent, ( contact , 
@@ -427,12 +275,12 @@ class CallsTab:
 		if child_count > 1:
 			child_count += 1
 			#if set in config, add the '(count)' to the contact field
-			if config.get('show_group_count'):
+			if CallsTab.conf.getboolean('phonelog','show_group_count'):
 				current_value = model[last_parent_added][self.CONTACT_POSITION]
 				model.set_value(last_parent_added,self.CONTACT_POSITION, "%s (%d)" % (current_value, child_count))
 				
-		#Set last refresh time
-		RefreshTime.set(type)
+		#Set last refresh time to now
+		CallsTab.conf.set('viewlog',type,str(time.time()))
 		return True										
 
 
@@ -503,9 +351,9 @@ class CallsTab:
 		return number
 	def addToTab(self, notebook):
 		type = typeFromLegacyDaemonType(self.__type)
-		if config.get(type + '_tab_type') == 'icon':
+		if CallsTab.conf.get('phonelog',type + '_tab_type') == 'icon':
 			tabWidget = gtk.Image()
-			image_path = config.get(type + '_tab_image_file')
+			image_path = CallsTab.conf.get('phonelog',type + '_tab_image_file')
 
 			#if not absolute
 			if image_path[0] != '/':
@@ -513,7 +361,7 @@ class CallsTab:
 				
 			tabWidget.set_from_file(image_path)
 		else:
-			tabWidget = gtk.Label(config.get(type + '_tab_name') )
+			tabWidget = gtk.Label(CallsTab.conf.get('phonelog',type + '_tab_name') )
 		notebook.insert_page(self.getTab(), tabWidget)
 		notebook.set_tab_label_packing(self.getTab(), True, True, gtk.PACK_START)
 class GeneralTab(CallsTab):
@@ -614,13 +462,18 @@ class PhoneData:
 	__database = None
 	__phoneLog = None
 	__contacts = None
-	
-	def __init__(self, systemBus):
-		if config.get('phonekitd'):
+	conf       = None # is inited before use to ConfigParser object
+
+	def __init__(self, systemBus, config):
+                # init the ConfigParser object once, bail out if failing.
+                if PhoneData.conf == None:
+                  PhoneData.conf = config
+                assert PhoneData.conf != None
+		if PhoneData.conf.getboolean('phonelog','phonekitd'):
 			if not os.path.exists(self.OPHONEKITD_DB):
 				print "Can't Find " + self.OPHONEKITD_DB + " Falling back to the daemon"
 				self.useLegacy(systemBus)
-				config.setDirect('phonekitd', False)
+				PhoneData.conf.set('phonelog','phonekitd', 'false')
 			self.useOphonekitd()	
 		else:
 			self.useLegacy(systemBus)
@@ -670,16 +523,16 @@ class PhoneData:
 		#		(CALL_STATUS_INCOMING, config.get('missed_limit'))).fetchall()
 		if type == "missed":
 			calls = database.execute("SELECT %s FROM calls WHERE direction = ? AND activeTime IS NULL ORDER BY startTime DESC LIMIT ?" % (get_fields, ), \
-			(self.CALL_STATUS_INCOMING, config.get('missed_limit'))).fetchall()
+			(self.CALL_STATUS_INCOMING, PhoneData.conf.getint('phonelog','missed_limit'))).fetchall()
 		elif type == "incoming":
 			calls = database.execute("SELECT %s FROM calls WHERE direction = ? AND activeTime IS NOT NULL ORDER BY startTime DESC LIMIT ?" % (get_fields, ), \
-			(self.CALL_STATUS_INCOMING, config.get('received_limit'))).fetchall()
+			(self.CALL_STATUS_INCOMING, PhoneData.conf.getint('phonelog','received_limit'))).fetchall()
 		elif type == "outgoing":
 			calls = database.execute("SELECT %s FROM calls WHERE direction = ? ORDER BY startTime DESC LIMIT ?" % (get_fields, ), \
-				(self.CALL_STATUS_OUTGOING, config.get('made_limit'))).fetchall()
+				(self.CALL_STATUS_OUTGOING, PhoneData.conf.getint('phonelog','made_limit'))).fetchall()
 		elif type == "all":
 			calls = database.execute("SELECT %s FROM calls ORDER BY startTime DESC LIMIT ?" % (get_fields, ), \
-				(config.get('general_limit'),) ).fetchall()
+				(PhoneData.conf.getint('phonelog','general_limit'),) ).fetchall()
 		else:
 			return None
 		return calls
@@ -689,13 +542,13 @@ class PhoneData:
 		if self.__database != None:
 			self.__database.close()
 	def getCalls(self, type):
-		if config.get('phonekitd'):
+		if PhoneData.conf.getboolean('phonelog','phonekitd'):
 			calls = self.getPhonekitCallsList(type)
 			if len(calls) == 0:
 				return None				
 		else:
 			legacy_limit = typeFromLegacyDaemonType(type)
-			calls = self.__phoneLog.GetCallsList(type, config.get(legacy_limit + "_limit"))
+			calls = self.__phoneLog.GetCallsList(type, PhoneData.conf.get(legacy_limit + "_limit"))
 			try: #hack because i send dbus empty
 				calls[0]
 			except:
@@ -756,9 +609,9 @@ def timeToString(call_time):
 	   (now[1] == time_tuple[1]) and \
 	   (now[2] == time_tuple[2]):
 
-		return "Today, " + call_time.strftime(config.get('time_format'))
+		return "Today, " + call_time.strftime(config.get('phonelog','time_format'))
 	else:
-		return call_time.strftime(config.get('date_format') + " " + config.get('time_format') )
+		return call_time.strftime(config.get('phonelog','date_format') + " " + config.get('phonelog','time_format') )
 
 def quitMainloop(*dump):
 	mainloop.quit()
@@ -776,13 +629,26 @@ def cb_win_resize(window, rect, notebook):
 		upright = tmp_upright
 	
 	if upright:
-		if config.get('debug'):
+		if config.getboolean('phonelog','debug'):
 			print "Upright"
 		notebook.set_property("tab-pos", gtk.POS_TOP)
 	else:
-		if config.get('debug'):
+		if config.getboolean('phonelog','debug'):
 			print "Rotated"
 		notebook.set_property("tab-pos", gtk.POS_LEFT)
+
+def init_last_view_times(config):
+    if not config.has_section('viewlog'):
+      config.add_section('viewlog')
+
+    if not config.has_option('viewlog', 'incoming'):
+      config.set('viewlog','incoming', '0')
+    if not config.has_option('viewlog', 'outgoing'):
+      config.set('viewlog','outgoing', '0')
+    if not config.has_option('viewlog', 'missed'):
+      config.set('viewlog','missed', '0')
+    if not config.has_option('viewlog', 'all'):
+      config.set('viewlog','all', '0')
 
 
 #############################################
@@ -798,13 +664,14 @@ DBusGMainLoop(set_as_default=True)
 mainloop = gobject.MainLoop()
 
 systemBus = dbus.SystemBus()
-config = Configuration(CONFIGURATION_FILE)
-phone_data = PhoneData(systemBus)
-RefreshTime = LastTime(TIME_FILE)
+config = ConfigParser.ConfigParser()
+config.read([DEFAULT_CONFIG_PATH, CONFIGURATION_FILE])
+init_last_view_times(config)
+phone_data = PhoneData(systemBus, config)
 RefreshMonitor = SignalMonitor(systemBus)
 
 
-if config.get('debug'):
+if config.getboolean('phonelog','debug'):
 	print "Initialized global vars"
 	print "Initializing gtk interface"
 
@@ -815,12 +682,11 @@ win.connect('delete-event', quitMainloop )
 win.set_title("Phone Log")
 win.set_default_size(480,640)
 
-if config.get('change_rotate_layout'):
+if config.getboolean('phonelog','change_rotate_layout'):
 	win.connect('size-allocate', cb_win_resize, notebook) #redsign on resize
 
 
-
-incoming = CallsTab('incoming')
+incoming = CallsTab('incoming', conf=config)
 outgoing = CallsTab('outgoing')
 missed = CallsTab('missed', True)
 general = GeneralTab('all')
@@ -831,11 +697,11 @@ outgoing.addToTab(notebook)
 missed.addToTab(notebook)
 general.addToTab(notebook)
 
-if config.get('debug'):
+if config.getboolean('phonelog','debug'):
 	print "Showing main window"
 win.show_all()
 
-startup_page = stringToTabNumber( config.get('startup_tab') )
+startup_page = stringToTabNumber(config.get('phonelog','startup_tab') )
 notebook.set_current_page(startup_page)
 
 #retrieve contacts
@@ -847,10 +713,10 @@ missed.populateList()
 general.populateList()
 
 #end of inits.
-
 mainloop.run()
 
-
 #clean and exit
-RefreshTime.writeToFile()
 phone_data.clean()
+# write out config file on exit (also last viewed times)
+with open(CONFIGURATION_FILE,'w+') as f:
+  config.write(f)
