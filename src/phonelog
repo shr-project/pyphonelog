@@ -11,7 +11,7 @@ contributions from Sebastian Spaeth (Sebastian@SSpaeth.de)
 Licensed by GPLv2
 """
 
-__version__ = "0.15.9"
+__version__ = "0.16.1"
 
 
 import time, ConfigParser
@@ -398,11 +398,12 @@ class SignalMonitor:
 	def __init__(self, bus):
 		self.__bus = bus
 		self.__connectCallStatus()
+
 	def __connectCallStatus(self):
 		bus = self.__bus
 		proxy = bus.get_object(self.PHONE_BUSNAME,self.PHONE_OBJECTPATH)
 		iface = dbus.Interface(proxy, self.PHONE_INTERFACE)
-		iface.connect_to_signal("CallStatus", self.cb_CallStatus)
+		iface.connect_to_signal("CallStatus", self.cb_CallStatus, self.__config)
         			
 	def cb_CallStatus(self, id, status, props):
 		#should this even happen?
@@ -668,7 +669,10 @@ config = ConfigParser.ConfigParser()
 config.read([DEFAULT_CONFIG_PATH, CONFIGURATION_FILE])
 init_last_view_times(config)
 phone_data = PhoneData(systemBus, config)
-RefreshMonitor = SignalMonitor(systemBus)
+
+#if we auto refresh is set
+if config.getboolean('phonelog','auto_refresh'):
+	RefreshMonitor = SignalMonitor(systemBus)
 
 
 if config.getboolean('phonelog','debug'):
