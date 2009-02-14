@@ -184,7 +184,12 @@ class CallsTab:
 		for call in calls:
 			
 			number = call[0]
-			contact = phone_data.getContact(number)
+			if number != None:
+				contact = phone_data.getContact(number)
+			else:
+				contact = ""
+				print "There's a corruption in the DB, empty phone number!"
+				
 			timestamp = float(call[1])	
 			call_time = datetime.fromtimestamp( timestamp )
 			status = call[2]
