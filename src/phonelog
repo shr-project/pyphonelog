@@ -216,11 +216,23 @@ class CallsTab:
 			status = call[2]
 
 			if CallsTab.conf.getboolean('phonelog','phonekitd'):
-				active_time = call[3]
+				#if none at least make it 0, else, numerify it.
+				if call[3] == None:
+					tmp_duration = 0
+				else:
+					tmp_duration = int(call[3])
 
-				#untill the change will be coded in the daemon
-				if active_time == None:
-					active_time = "00:00"
+				active_hours = int(tmp_duration / 3600)
+				active_minutes = int(tmp_duration / 60 - active_hours * 60)
+				active_seconds = int(tmp_duration - active_hours*3600 - active_minutes * 60)
+	
+				#don't show hours if not needed.
+				if active_hours == 0:
+					active_time = "%02d:%02d" % (active_minutes, active_seconds)
+				else:
+					active_time = "%02d:%02d:%02d" % (active_hours, active_minutes, active_seconds)
+				
+
 			else:
 				active_time = "No legacy support"
 
