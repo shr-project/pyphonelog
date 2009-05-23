@@ -331,7 +331,10 @@ class CallsTab:
 		
 		if number != None:
 			#TODO, once the highlevel api work, change to them.
-			phoneObject.Initiate (number, 'voice')
+			try:
+				phoneObject.Initiate (number, 'voice')
+			except:
+				print "Failed to initiate a call"
 		
 	def numberButton_clicked (self, button):
 		list = self.__list
@@ -751,7 +754,10 @@ startup_page = stringToTabNumber(config.get('phonelog','startup_tab') )
 notebook.set_current_page(startup_page)
 
 #retrieve contacts
-phone_data.initContacts()
+try:
+	phone_data.initContacts()
+except:
+	print "Failed to initialize contacts"
 
 incoming.populateList()
 outgoing.populateList()
