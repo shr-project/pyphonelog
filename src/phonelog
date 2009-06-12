@@ -188,15 +188,15 @@ class CallsTab:
 				contact = phone_data.getContact(number)
 			else:
 				contact = ""
-				print "There's a corruption in the DB, empty phone number!" + "(" + call[4]  + ")"
+				print "There's a corruption in the DB, empty phone number!" + "(" + str(call[4])  + ")"
 				print "To remove bad data, run the following sql querys on the phonelog db: /var/db/phonelog.db"
-				print "delete from call_events where id = " + call[4]
+				print "delete from call_events where id = " + str(call[4])
 				print "and"
-				print "delete from call_ids where id = " + call[4]
+				print "delete from call_ids where id = " + str(call[4])
 				print "If you don't care about your phonelog db, you can just remove the"
 				print "/var/db/phonelog file."
 				print "please open a ticket with the output of the following query:"
-				print "select * from call_ids where id = " +call[4]
+				print "select * from call_ids where id = " + str(call[4])
 
 			if call[1] != None:
 				timestamp = float(call[1])	
