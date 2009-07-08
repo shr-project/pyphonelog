@@ -563,20 +563,24 @@ class PhoneData:
 		#if type == "missed":
 		#	calls = database.execute("SELECT %s FROM missed_calls WHERE direction = ? ORDER BY startTime DESC LIMIT ?" % (get_fields,  ) ,\
 		#		(CALL_STATUS_INCOMING, config.get('missed_limit'))).fetchall()
+		if config.getboolean('phonelog','debug'):
+			print "Getting " + type
 		if type == "missed":
-			calls = database.execute("SELECT %s FROM calls WHERE direction = ? AND activeTime IS NULL ORDER BY startTime DESC LIMIT ?" % (get_fields, ), \
+			calls = database.execute("SELECT %s FROM calls WHERE direction = ? AND activeTime IS NULL ORDER BY id DESC LIMIT ?" % (get_fields, ), \
 			(self.CALL_STATUS_INCOMING, PhoneData.conf.getint('phonelog','missed_limit'))).fetchall()
 		elif type == "incoming":
-			calls = database.execute("SELECT %s FROM calls WHERE direction = ? AND activeTime IS NOT NULL ORDER BY startTime DESC LIMIT ?" % (get_fields, ), \
+			calls = database.execute("SELECT %s FROM calls WHERE direction = ? AND activeTime IS NOT NULL ORDER BY id DESC LIMIT ?" % (get_fields, ), \
 			(self.CALL_STATUS_INCOMING, PhoneData.conf.getint('phonelog','received_limit'))).fetchall()
 		elif type == "outgoing":
-			calls = database.execute("SELECT %s FROM calls WHERE direction = ? ORDER BY startTime DESC LIMIT ?" % (get_fields, ), \
+			calls = database.execute("SELECT %s FROM calls WHERE direction = ? ORDER BY id DESC LIMIT ?" % (get_fields, ), \
 				(self.CALL_STATUS_OUTGOING, PhoneData.conf.getint('phonelog','made_limit'))).fetchall()
 		elif type == "all":
-			calls = database.execute("SELECT %s FROM calls ORDER BY startTime DESC LIMIT ?" % (get_fields, ), \
+			calls = database.execute("SELECT %s FROM calls ORDER BY id DESC LIMIT ?" % (get_fields, ), \
 				(PhoneData.conf.getint('phonelog','general_limit'),) ).fetchall()
 		else:
 			return None
+		if config.getboolean('phonelog','debug'):
+			print "Finished getting " + type
 		return calls
 		
 
