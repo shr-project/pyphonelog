@@ -662,6 +662,16 @@ def timeToString(call_time):
 def quitMainloop(*dump):
 	mainloop.quit()
 
+def populateListByPageNum(incoming, outgoing, missed, general, page_num):
+	if page_num == PAGE_GENERAL:
+		general.populateList()
+	elif page_num == PAGE_INCOMING:
+		incoming.populateList()
+	elif page_num == PAGE_OUTGOING:
+		outgoing.populateList()
+	elif page_num == PAGE_MISSED:
+		missed.populateList()
+		
 #THIS GLOBAL VAR IS PART OF THIS FUNCTION
 upright = None
 def cb_win_resize(window, rect, notebook):
@@ -684,18 +694,20 @@ def cb_win_resize(window, rect, notebook):
 		notebook.set_property("tab-pos", gtk.POS_LEFT)
 
 def init_last_view_times(config):
-    if not config.has_section('viewlog'):
-      config.add_section('viewlog')
+	if not config.has_section('viewlog'):
+		config.add_section('viewlog')
 
-    if not config.has_option('viewlog', 'incoming'):
-      config.set('viewlog','incoming', '0')
-    if not config.has_option('viewlog', 'outgoing'):
-      config.set('viewlog','outgoing', '0')
-    if not config.has_option('viewlog', 'missed'):
-      config.set('viewlog','missed', '0')
-    if not config.has_option('viewlog', 'all'):
-      config.set('viewlog','all', '0')
+	if not config.has_option('viewlog', 'incoming'):
+		config.set('viewlog','incoming', '0')
+	if not config.has_option('viewlog', 'outgoing'):
+		config.set('viewlog','outgoing', '0')
+	if not config.has_option('viewlog', 'missed'):
+		config.set('viewlog','missed', '0')
+	if not config.has_option('viewlog', 'all'):
+		config.set('viewlog','all', '0')
 
+def cb_TabSwitch(notebook, page, page_num, incoming, outgoing, general, missed):
+	populateListByPageNum(incoming, outgoing, missed, general, page_num)
 
 #############################################
 ################# MAIN ######################
@@ -744,7 +756,6 @@ outgoing = CallsTab('outgoing')
 missed = CallsTab('missed', True)
 general = GeneralTab('all')
 
-
 incoming.addToTab(notebook)
 outgoing.addToTab(notebook)
 missed.addToTab(notebook)
@@ -757,16 +768,17 @@ win.show_all()
 startup_page = stringToTabNumber(config.get('phonelog','startup_tab') )
 notebook.set_current_page(startup_page)
 
+notebook.connect ("switch-page", cb_TabSwitch, incoming, outgoing, missed, general)
+
+
 #retrieve contacts
 try:
 	phone_data.initContacts()
 except:
 	print "Failed to initialize contacts"
 
-incoming.populateList()
-outgoing.populateList()
-missed.populateList()
-general.populateList()
+
+populateListByPageNum(incoming, outgoing, missed, general, startup_page)
 
 #end of inits.
 mainloop.run()
