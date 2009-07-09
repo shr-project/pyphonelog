@@ -164,6 +164,9 @@ class CallsTab:
 		"""
 		global phone_data
 		
+		if config.getboolean('phonelog','debug'):
+			print "Started populating list"
+			
 		list = self.__list
 		type = self.__type
 		previous_time = datetime.fromtimestamp(CallsTab.conf.getfloat('viewlog', type))
@@ -184,6 +187,9 @@ class CallsTab:
 		for call in calls:
 			
 			number = call[0]
+			#hack because of the (frameworks?) double quotes bug
+			number = number.strip('"')
+
 			if number != None:
 				contact = phone_data.getContact(number)
 			else:
@@ -202,7 +208,7 @@ class CallsTab:
 				timestamp = float(call[1])	
 				call_time = datetime.fromtimestamp( timestamp )
 			else:
-				call_time = "Error"
+				call_time = datetime.fromtimestamp( 0 )
 				print "There's a corruption in the DB, empty date number!" + "(" + call[4]  + ")"
 				print "To remove bad data, run the following sql querys on the phonelog db: /var/db/phonelog.db and please report"
 				print "delete from call_events where id = " + call[4]
@@ -236,9 +242,7 @@ class CallsTab:
 			else:
 				active_time = "No legacy support"
 
-			#hack because of the (frameworks?) double quotes bug
-			number = number.strip('"')
-			
+		
 			#HACK FOR THE GENERAL LIST
 			if CallsTab.conf.getboolean('phonelog','phonekitd'):
 				if active_time == "00:00":
@@ -319,6 +323,10 @@ class CallsTab:
 				
 		#Set last refresh time to now
 		CallsTab.conf.set('viewlog',type,str(time.time()))
+
+		if config.getboolean('phonelog','debug'):
+			print "Done populating list"
+			
 		return True										
 
 
@@ -545,23 +553,31 @@ class PhoneData:
 		results = query.GetMultipleResults(query.GetResultCount())
 
 		for result in results:
-			self.__contacts_cache[result['Phone']] = result['Name']
+			self.__contacts_cache[ self.canonizePhoneNumber(result['Phone']) ] = result['Name']
 		query.Dispose() # delete query result from memory
 		
 		if config.getboolean('phonelog','debug'):
 			print "Done caching contacts"
 		
 	def getContact(self, number):
-		if number in self.__contacts_cache:
-			return self.__contacts_cache[number]
+		can_num = self.canonizePhoneNumber(number)
+		if can_num in self.__contacts_cache:
+			return self.__contacts_cache[can_num]
 		else:
-			for cache_number in self.__contacts_cache:
-				if self.comparePhoneNumber(cache_number, number):
-					return self.__contacts_cache[cache_number]
-			return ""
+			return number
+
+	def canonizePhoneNumber(self, number):
+		digits = filter (lambda c: c.isdigit() or c == '+', number)
+
+		if digits == '':
+			return number
+		else:
+			return digits[-7:]
 
 	def comparePhoneNumber(self, number1, number2):
 		'''
+		Not used ANYMORE!~
+		
 		Compares two phone numbers. They are considered equal if:
 		a) One does not contain digits, and they are equal as strings
 		or
