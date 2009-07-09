@@ -490,9 +490,16 @@ class PhoneData:
 	PHONELOG_OBJECTPATH = "/org/smartphone/PIM/Log"
 	PHONELOG_INTERFACE = "org.smartphone.PIM.Log.Calls"
 
+	"""
 	CONTACTS_BUSNAME = 'org.freesmartphone.ogsmd'
 	CONTACTS_OBJECTPATH = '/org/freesmartphone/GSM/Device'
 	CONTACTS_INTERFACE = 'org.freesmartphone.GSM.SIM'
+	"""
+
+	CONTACTS_BUSNAME = 'org.freesmartphone.opimd'
+	CONTACTS_OBJECTPATH = '/org/freesmartphone/PIM/Contacts'
+	CONTACTS_INTERFACE = 'org.freesmartphone.PIM.Contacts'
+	CONTACTS_INTERFACE_QUERY = 'org.freesmartphone.PIM.ContactQuery'
 
 	PHONE_BUSNAME = 'org.freesmartphone.ogsmd'
 	PHONE_OBJECTPATH = '/org/freesmartphone/GSM/Device'
@@ -503,7 +510,7 @@ class PhoneData:
 	__phonelog_type = OPHONEKITD_TYPE
 	__database = None
 	__phoneLog = None
-	__contacts = None
+	__contacts_cache = {}
 	conf       = None # is inited before use to ConfigParser object
 
 	def __init__(self, systemBus, config):
@@ -526,17 +533,32 @@ class PhoneData:
 		self.__phonelog_type = self.OPHONEKITD_TYPE
 		self.__database = sqlite3.connect(self.OPHONEKITD_DB)
 	def initContacts(self):
+		if config.getboolean('phonelog','debug'):
+			print "Started caching contacts"
 		contactsObject = self.getContactsObject(systemBus)
-		self.__contacts = contactsObject.RetrievePhonebook("contacts")
+		
+		interface = self.getDbusObject (systemBus, self.CONTACTS_BUSNAME, self.CONTACTS_OBJECTPATH, self.CONTACTS_INTERFACE)
+
+		x = interface.Query({})
+
+		query = self.getDbusObject (systemBus, self.CONTACTS_BUSNAME, x, self.CONTACTS_INTERFACE_QUERY)
+		results = query.GetMultipleResults(query.GetResultCount())
+
+		for result in results:
+			self.__contacts_cache[result['Phone']] = result['Name']
+		query.Dispose() # delete query result from memory
+		
+		if config.getboolean('phonelog','debug'):
+			print "Done caching contacts"
+		
 	def getContact(self, number):
-		contacts = self.__contacts
-		if contacts == None:
+		if number in self.__contacts_cache:
+			return self.__contacts_cache[number]
+		else:
+			for cache_number in self.__contacts_cache:
+				if self.comparePhoneNumber(cache_number, number):
+					return self.__contacts_cache[cache_number]
 			return ""
-			
-		for contact in contacts:
-			if self.comparePhoneNumber(contact[2], number):
-				return contact[1]
-		return ""
 
 	def comparePhoneNumber(self, number1, number2):
 		'''
