@@ -744,7 +744,7 @@ def init_last_view_times(config):
 	if not config.has_option('viewlog', 'all'):
 		config.set('viewlog','all', '0')
 
-def cb_TabSwitch(notebook, page, page_num, incoming, outgoing, general, missed):
+def cb_TabSwitch(notebook, page, page_num, incoming, outgoing, missed, general):
 	populateListByPageNum(incoming, outgoing, missed, general, page_num)
 
 #############################################
