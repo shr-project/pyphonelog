@@ -544,6 +544,10 @@ class PhoneData:
 		if self.__database != None:
 			self.__database.close()
 	def getCalls(self, type):
+
+		if config.getboolean('phonelog','debug'):
+			print "Started getting " + type
+			
 		interface = self.getDbusObject (systemBus, self.CALLS_BUSNAME, self.CALLS_OBJECTPATH, self.CALLS_INTERFACE)
 
 		if type == "missed":
