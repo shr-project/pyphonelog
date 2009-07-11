@@ -2,7 +2,7 @@ from distutils.core import setup
 import glob
     
 setup(name='pyphonelog',
-        version='0.16.1',
+        version='0.17.0',
 	description='A phonelog gui that connects to the shr daemon/a custom daemon',
         author='Tom Hacohen',
         author_email='tom@stosb.com',

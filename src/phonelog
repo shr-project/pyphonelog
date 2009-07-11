@@ -1,12 +1,12 @@
 #!/usr/bin/python
-# -*- coding: UTF-8 -*-
+# -*- coding: utf-8 -*-
 
 """
-This is a phonelog GTK+ GUI, designed to use with a custom daemon,
-the SHR daemon, and when ready, opimd.
+This is a phonelog GTK+ GUI, designed to use with opimd.
 
 Written by Tom Hacohen. (tom@stosb.com), 
 contributions from Sebastian Spaeth (Sebastian@SSpaeth.de)
+and Sebastian dos1 (reach at #openmoko-cdevel@freenode)
 
 Licensed by GPLv2
 """
@@ -18,7 +18,9 @@ import time, ConfigParser
 import os.path
 import shutil
 import re
+from math import ceil
 from datetime import datetime
+from operator import itemgetter
 
 import dbus
 import gobject, gtk
@@ -64,6 +66,7 @@ class CallsTab:
 	__tab = None
 	__type = None
 	__mark_new = False
+	__manually_updated = False
         conf = None #inited with ConfigParser object once!
 	
 	def __init__(self, type, mark_new = False, conf=None):
@@ -78,11 +81,14 @@ class CallsTab:
 		self.__mark_new = mark_new
 	def getList(self):
 		return self.__list
-
 	def getTab(self):
 		return self.__tab
 	def shouldMarkNew(self):
 		return self.__mark_new
+	def getManuallyUpdated(self):
+		return self.__manually_updated
+	def setManuallyUpdated(self, status = True):
+		self.__manually_updated = status
 	def __getContactColumn(self):
 		return self.CONTACT_COLUMN
 	def __getDateColumn(self):
@@ -166,7 +172,9 @@ class CallsTab:
 		
 		if config.getboolean('phonelog','debug'):
 			print "Started populating list"
-			
+
+		self.setManuallyUpdated()
+		
 		list = self.__list
 		type = self.__type
 		previous_time = datetime.fromtimestamp(CallsTab.conf.getfloat('viewlog', type))
@@ -186,80 +194,45 @@ class CallsTab:
 		
 		for call in calls:
 			
-			number = call[0]
-			#hack because of the (frameworks?) double quotes bug
-			number = number.strip('"')
-
-			if number != None:
+			if call.has_key('Peer'):
+				number = call['Peer']
+				number = number.strip('tel:')
 				contact = phone_data.getContact(number)
 			else:
-				contact = ""
-				print "There's a corruption in the DB, empty phone number!" + "(" + str(call[4])  + ")"
-				print "To remove bad data, run the following sql querys on the phonelog db: /var/db/phonelog.db"
-				print "delete from call_events where id = " + str(call[4])
-				print "and"
-				print "delete from call_ids where id = " + str(call[4])
-				print "If you don't care about your phonelog db, you can just remove the"
-				print "/var/db/phonelog file."
-				print "please open a ticket with the output of the following query:"
-				print "select * from call_ids where id = " + str(call[4])
-
-			if call[1] != None:
-				timestamp = float(call[1])	
-				call_time = datetime.fromtimestamp( timestamp )
-			else:
-				call_time = datetime.fromtimestamp( 0 )
-				print "There's a corruption in the DB, empty date number!" + "(" + call[4]  + ")"
-				print "To remove bad data, run the following sql querys on the phonelog db: /var/db/phonelog.db and please report"
-				print "delete from call_events where id = " + call[4]
-				print "and"
-				print "delete from call_ids where id = " + call[4]
-				print "If you don't care about your phonelog db, you can just remove the"
-				print "/var/db/phonelog file."
-				print "please open a ticket with the output of the following query:"
-				print "select * from call_ids where id = " +call[4]
-				
-			status = call[2]
-
-			if CallsTab.conf.getboolean('phonelog','phonekitd'):
-				#if none at least make it 0, else, numerify it.
-				if call[3] == None:
-					tmp_duration = 0
-				else:
-					tmp_duration = int(call[3])
-
-				active_hours = int(tmp_duration / 3600)
-				active_minutes = int(tmp_duration / 60 - active_hours * 60)
-				active_seconds = int(tmp_duration - active_hours*3600 - active_minutes * 60)
-	
-				#don't show hours if not needed.
-				if active_hours == 0:
-					active_time = "%02d:%02d" % (active_minutes, active_seconds)
-				else:
-					active_time = "%02d:%02d:%02d" % (active_hours, active_minutes, active_seconds)
-				
-
-			else:
-				active_time = "No legacy support"
-
-		
-			#HACK FOR THE GENERAL LIST
-			if CallsTab.conf.getboolean('phonelog','phonekitd'):
-				if active_time == "00:00":
-					status += 2
-					#Usually it shouldn't be changed back, things have
-					#to change before that can happen
-					if status == 3:
-						status = 1
-
-			missed = (status == 2)
-
-			#don't group supressed numbers
-			#and make the contact Unknown Number
-			if number == "*****":
+				#don't group supressed numbers
+				#and make the contact Unknown Number
+				number = "****"
 				last_parent_added = None
 				contact = CallsTab.conf.get('phonelog',"suppressed_name")
 
+			timestamp = call['Timestamp']	
+			call_time = datetime.fromtimestamp( timestamp )
+				
+			if call['Direction'] == 'in' and call['Answered'] == 0:
+				status = 2
+			elif call['Direction'] == 'in':
+				status = 0
+			else:
+				status = 1
+
+			#if none at least make it 0, else, numerify it.
+			if not call.has_key('Duration'):
+				tmp_duration = 0
+			else:
+				tmp_duration = ceil(call['Duration'])
+
+			active_hours = int(tmp_duration / 3600)
+			active_minutes = int(tmp_duration / 60 - active_hours * 60)
+			active_seconds = int(tmp_duration - active_hours*3600 - active_minutes * 60)
+	
+			#don't show hours if not needed.
+			if active_hours == 0:
+				active_time = "%02d:%02d" % (active_minutes, active_seconds)
+			else:
+				active_time = "%02d:%02d:%02d" % (active_hours, active_minutes, active_seconds)
+				
+		
+			missed = (status == 2)
 				
 			#check if should be grouped
 			#if grouping should stop, update the child count to the father
@@ -439,9 +412,9 @@ class GeneralTab(CallsTab):
 
 
 class SignalMonitor:
-	PHONE_BUSNAME = 'org.freesmartphone.ogsmd'
-	PHONE_OBJECTPATH = '/org/freesmartphone/GSM/Device'
-	PHONE_INTERFACE = 'org.freesmartphone.GSM.Call'
+	PHONE_BUSNAME = 'org.freesmartphone.opimd'
+	PHONE_OBJECTPATH = '/org/freesmartphone/PIM/Calls'
+	PHONE_INTERFACE = 'org.freesmartphone.PIM.Calls'
 	__bus = None
 		
 	def __init__(self, bus):
@@ -452,33 +425,14 @@ class SignalMonitor:
 		bus = self.__bus
 		proxy = bus.get_object(self.PHONE_BUSNAME,self.PHONE_OBJECTPATH)
 		iface = dbus.Interface(proxy, self.PHONE_INTERFACE)
-		iface.connect_to_signal("CallStatus", self.cb_CallStatus, self.__config)
+		iface.connect_to_signal("NewCall", self.cb_CallAdded)
         			
-	def cb_CallStatus(self, id, status, props):
-		#should this even happen?
-		if props == None:
-			return 
-
-		
-		#we only handle release
-		if status != "release":
-			return 
-
-		"""
-		direction = props[0]
-		if direction == "incoming":
-			incoming.populateList()
-			missed.populateList()
-		elif direction == "outgoing":
-			outgoing.populateList()
-		"""
-		#on release update all, figure out how to check what to
-		#update.
-		#FIXME: possible race condition with the phonelog daemon.
-		incoming.populateList()
-		missed.populateList()
-		outgoing.populateList()
-		general.populateList()
+	def cb_CallAdded(self, path):
+		#TODO: check, what to update.
+		incoming.setManuallyUpdated(False)
+		missed.setManuallyUpdated(False)
+		outgoing.setManuallyUpdated(False)
+		general.setManuallyUpdated(False)
 		
 class PhoneData:
 	#OPHONEKITD related
@@ -509,6 +463,11 @@ class PhoneData:
 	CONTACTS_INTERFACE = 'org.freesmartphone.PIM.Contacts'
 	CONTACTS_INTERFACE_QUERY = 'org.freesmartphone.PIM.ContactQuery'
 
+	CALLS_BUSNAME = 'org.freesmartphone.opimd'
+	CALLS_OBJECTPATH = '/org/freesmartphone/PIM/Calls'
+	CALLS_INTERFACE = 'org.freesmartphone.PIM.Calls'
+	CALLS_INTERFACE_QUERY = 'org.freesmartphone.PIM.CallQuery'
+
 	PHONE_BUSNAME = 'org.freesmartphone.ogsmd'
 	PHONE_OBJECTPATH = '/org/freesmartphone/GSM/Device'
 	PHONE_INTERFACE = 'org.freesmartphone.GSM.Call'
@@ -526,20 +485,6 @@ class PhoneData:
                 if PhoneData.conf == None:
                   PhoneData.conf = config
                 assert PhoneData.conf != None
-		if PhoneData.conf.getboolean('phonelog','phonekitd'):
-			if not os.path.exists(self.OPHONEKITD_DB):
-				print "Can't Find " + self.OPHONEKITD_DB + " Falling back to the daemon"
-				self.useLegacy(systemBus)
-				PhoneData.conf.set('phonelog','phonekitd', 'false')
-			self.useOphonekitd()	
-		else:
-			self.useLegacy(systemBus)
-	def useLegacy(self, systemBus):
-		self.__phonelog_type = self.LEGACY_TYPE
-		self.__phoneLog = self.getPhoneLogObject(systemBus)
-	def useOphonekitd(self):
-		self.__phonelog_type = self.OPHONEKITD_TYPE
-		self.__database = sqlite3.connect(self.OPHONEKITD_DB)
 	def initContacts(self):
 		if config.getboolean('phonelog','debug'):
 			print "Started caching contacts"
@@ -595,48 +540,38 @@ class PhoneData:
 			return digits1 == digits2
 		else:
 			return digits1[-7:] == digits2[-7:]
-	def getPhonekitCallsList(self, type):
-		database = self.__database
-		get_fields = "number, strftime('%s',startTime), direction, duration, id"
-		#if type == "missed":
-		#	calls = database.execute("SELECT %s FROM missed_calls WHERE direction = ? ORDER BY startTime DESC LIMIT ?" % (get_fields,  ) ,\
-		#		(CALL_STATUS_INCOMING, config.get('missed_limit'))).fetchall()
-		if config.getboolean('phonelog','debug'):
-			print "Getting " + type
-		if type == "missed":
-			calls = database.execute("SELECT %s FROM calls WHERE direction = ? AND activeTime IS NULL ORDER BY id DESC LIMIT ?" % (get_fields, ), \
-			(self.CALL_STATUS_INCOMING, PhoneData.conf.getint('phonelog','missed_limit'))).fetchall()
-		elif type == "incoming":
-			calls = database.execute("SELECT %s FROM calls WHERE direction = ? AND activeTime IS NOT NULL ORDER BY id DESC LIMIT ?" % (get_fields, ), \
-			(self.CALL_STATUS_INCOMING, PhoneData.conf.getint('phonelog','received_limit'))).fetchall()
-		elif type == "outgoing":
-			calls = database.execute("SELECT %s FROM calls WHERE direction = ? ORDER BY id DESC LIMIT ?" % (get_fields, ), \
-				(self.CALL_STATUS_OUTGOING, PhoneData.conf.getint('phonelog','made_limit'))).fetchall()
-		elif type == "all":
-			calls = database.execute("SELECT %s FROM calls ORDER BY id DESC LIMIT ?" % (get_fields, ), \
-				(PhoneData.conf.getint('phonelog','general_limit'),) ).fetchall()
-		else:
-			return None
-		if config.getboolean('phonelog','debug'):
-			print "Finished getting " + type
-		return calls
-		
 
 	def clean(self):
 		if self.__database != None:
 			self.__database.close()
 	def getCalls(self, type):
-		if PhoneData.conf.getboolean('phonelog','phonekitd'):
-			calls = self.getPhonekitCallsList(type)
-			if len(calls) == 0:
-				return None				
+		interface = self.getDbusObject (systemBus, self.CALLS_BUSNAME, self.CALLS_OBJECTPATH, self.CALLS_INTERFACE)
+
+		if type == "missed":
+			props = {'Answered':0, 'Direction':'in'}
+		elif type == "incoming":
+			props = {'Answered':1, 'Direction':'in'}
+		elif type == "outgoing":
+			props = {'Direction':'out'}
+		elif type == "all":
+			props = {}
 		else:
-			legacy_limit = typeFromLegacyDaemonType(type)
-			calls = self.__phoneLog.GetCallsList(type, PhoneData.conf.get(legacy_limit + "_limit"))
-			try: #hack because i send dbus empty
-				calls[0]
-			except:
-				return None
+			return None
+
+		#props['_limit'] = PhoneData.conf.getint('phonelog', 'general_limit') # doesn't work now, opimd bug
+
+		x = interface.Query(props)
+
+		query = self.getDbusObject (systemBus, self.CALLS_BUSNAME, x, self.CALLS_INTERFACE_QUERY)
+		calls = query.GetMultipleResults(query.GetResultCount())
+
+		query.Dispose() # delete query result from memory
+
+		calls.sort(key=itemgetter('Timestamp'), reverse = True) # temp solution, it will be done by opimd
+
+		if config.getboolean('phonelog','debug'):
+			print "Finished getting " + type
+
 		return calls
 	def getDbusObject (self, bus, busname , objectpath , interface):
 		dbusObject = bus.get_object(busname, objectpath)
@@ -702,13 +637,17 @@ def quitMainloop(*dump):
 
 def populateListByPageNum(incoming, outgoing, missed, general, page_num):
 	if page_num == PAGE_GENERAL:
-		general.populateList()
+		if not general.getManuallyUpdated():
+			general.populateList()
 	elif page_num == PAGE_INCOMING:
-		incoming.populateList()
+		if not incoming.getManuallyUpdated():		
+			incoming.populateList()
 	elif page_num == PAGE_OUTGOING:
-		outgoing.populateList()
+		if not outgoing.getManuallyUpdated():
+			outgoing.populateList()
 	elif page_num == PAGE_MISSED:
-		missed.populateList()
+		if not missed.getManuallyUpdated():
+			missed.populateList()
 		
 #THIS GLOBAL VAR IS PART OF THIS FUNCTION
 upright = None
@@ -766,13 +705,7 @@ init_last_view_times(config)
 
 phone_data = PhoneData(systemBus, config)
 
-#if we auto refresh is set
-try:
-	if config.getboolean('phonelog','auto_refresh'):
-		RefreshMonitor = SignalMonitor(systemBus)
-except:
-	print "Can't connect to gsm"
-
+RefreshMonitor = SignalMonitor(systemBus)
 
 if config.getboolean('phonelog','debug'):
 	print "Initialized global vars"
