@@ -231,8 +231,6 @@ class CallsTab:
 			else:
 				active_time = "%02d:%02d:%02d" % (active_hours, active_minutes, active_seconds)
 				
-		
-			missed = (status == 2)
 				
 			#check if should be grouped
 			#if grouping should stop, update the child count to the father
@@ -549,16 +547,18 @@ class PhoneData:
 
 		if type == "missed":
 			props = {'Answered':0, 'Direction':'in'}
+			#props['_limit'] = PhoneData.conf.getint('phonelog', 'missed_limit') 
 		elif type == "incoming":
 			props = {'Answered':1, 'Direction':'in'}
+			#props['_limit'] = PhoneData.conf.getint('phonelog', 'received_limit') 
 		elif type == "outgoing":
 			props = {'Direction':'out'}
+			#props['_limit'] = PhoneData.conf.getint('phonelog', 'made_limit') 
 		elif type == "all":
 			props = {}
+			#props['_limit'] = PhoneData.conf.getint('phonelog', 'general_limit') 
 		else:
 			return None
-
-		#props['_limit'] = PhoneData.conf.getint('phonelog', 'general_limit') # doesn't work now, opimd bug
 
 		x = interface.Query(props)
 
