@@ -202,7 +202,7 @@ class CallsTab:
 			else:
 				#don't group supressed numbers
 				#and make the contact Unknown Number
-				number = "****"
+				number = CallsTab.conf.get('phonelog',"suppressed_name")
 				last_parent_added = None
 				contact = CallsTab.conf.get('phonelog',"suppressed_name")
 
@@ -309,7 +309,7 @@ class CallsTab:
 		
 		number = self.__getSelectedNumber()
 		
-		if number != None:
+		if number != None and number != CallsTab.conf.get('phonelog',"suppressed_name"):
 			#TODO, once the highlevel api work, change to them.
 			try:
 				phoneObject.Initiate (number, 'voice')
