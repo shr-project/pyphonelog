@@ -552,16 +552,16 @@ class PhoneData:
 
 		if type == "missed":
 			props = {'Answered':0, 'Direction':'in'}
-			#props['_limit'] = PhoneData.conf.getint('phonelog', 'missed_limit') 
+			props['_limit'] = PhoneData.conf.getint('phonelog', 'missed_limit') 
 		elif type == "incoming":
 			props = {'Answered':1, 'Direction':'in'}
-			#props['_limit'] = PhoneData.conf.getint('phonelog', 'received_limit') 
+			props['_limit'] = PhoneData.conf.getint('phonelog', 'received_limit') 
 		elif type == "outgoing":
 			props = {'Direction':'out'}
-			#props['_limit'] = PhoneData.conf.getint('phonelog', 'made_limit') 
+			props['_limit'] = PhoneData.conf.getint('phonelog', 'made_limit') 
 		elif type == "all":
 			props = {}
-			#props['_limit'] = PhoneData.conf.getint('phonelog', 'general_limit') 
+			props['_limit'] = PhoneData.conf.getint('phonelog', 'general_limit') 
 		else:
 			return None
 
