@@ -5,8 +5,9 @@
 This is a phonelog GTK+ GUI, designed to use with opimd.
 
 Written by Tom Hacohen. (tom@stosb.com), 
-contributions from Sebastian Spaeth (Sebastian@SSpaeth.de)
-and Sebastian dos1 (reach at #openmoko-cdevel@freenode)
+contributions from
+Sebastian Spaeth (Sebastian@SSpaeth.de)
+Sebastian Krzyszkowiak <seba.dos1@gmail.com>
 
 Licensed by GPLv2
 """
