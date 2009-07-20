@@ -16,7 +16,7 @@ __version__ = "0.16.1"
 
 
 import time, ConfigParser
-import os.path
+import os
 import shutil
 import re
 from math import ceil
@@ -114,11 +114,16 @@ class CallsTab:
 		numberButton.connect ("clicked", self.numberButton_clicked)
 		numberButton.set_size_request(-1,buttons_height)
 
+		contactButton = gtk.Button("Add")
+		contactButton.connect ("clicked", self.contactButton_clicked)
+		contactButton.set_size_request(-1,buttons_height)
+
 		durationButton = gtk.Button("Duration")
 		durationButton.connect ("clicked", self.durationButton_clicked)
 		durationButton.set_size_request(-1,buttons_height)
 		
 		buttons.pack_start(callButton, True, padding = 1)
+		buttons.pack_start(contactButton, True, padding = 3)
 		buttons.pack_start(numberButton, True, padding = 3)
 		buttons.pack_start(durationButton, True, padding = 1)
 		
@@ -313,6 +318,20 @@ class CallsTab:
 			#TODO, once the highlevel api work, change to them.
 			try:
 				phoneObject.Initiate (number, 'voice')
+			except:
+				print "Failed to initiate a call"
+	def contactButton_clicked (self, button):
+		global phone_data
+		phoneObject = phone_data.getPhoneObject(systemBus)
+		list = self.__list
+		
+		number = self.__getSelectedNumber()
+		
+		if number != None and number != CallsTab.conf.get('phonelog',"suppressed_name"):
+			#FIXME a bit ugly, until a better solution found.
+			# just to make sure you read the last line, ITS UGLY!
+			try:
+				os.system("shr-contacts " + number + " &")
 			except:
 				print "Failed to initiate a call"
 		
