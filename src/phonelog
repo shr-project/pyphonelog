@@ -27,6 +27,7 @@ import dbus
 import gobject, gtk
 import sqlite3
 from dbus.mainloop.glib import DBusGMainLoop
+import phoneutils
 
 try:
 	import mokoui
@@ -516,48 +517,18 @@ class PhoneData:
 		results = query.GetMultipleResults(query.GetResultCount())
 
 		for result in results:
-			self.__contacts_cache[ self.canonizePhoneNumber(result['Phone']) ] = result['Name']
+			self.__contacts_cache[ phoneutils.normalize_number(result['Phone']) ] = result['Name']
 		query.Dispose() # delete query result from memory
 		
 		if config.getboolean('phonelog','debug'):
 			print "Done caching contacts"
 		
 	def getContact(self, number):
-		can_num = self.canonizePhoneNumber(number)
+		can_num = phoneutils.normalize_number(number)
 		if can_num in self.__contacts_cache:
 			return self.__contacts_cache[can_num]
 		else:
 			return number
-
-	def canonizePhoneNumber(self, number):
-		digits = filter (lambda c: c.isdigit() or c == '+', number)
-
-		if digits == '':
-			return number
-		else:
-			return digits[-7:]
-
-	def comparePhoneNumber(self, number1, number2):
-		'''
-		Not used ANYMORE!~
-		
-		Compares two phone numbers. They are considered equal if:
-		a) One does not contain digits, and they are equal as strings
-		or
-		b) Both start with a "+", and all following digits are equal
-		or
-		c) At least one of them does not start with a "+", and the
-		   last 7 digits are equal
-		'''
-		digits1 = filter (lambda c: c.isdigit() or c == '+', number1)
-		digits2 = filter (lambda c: c.isdigit() or c == '+', number2)
-
-		if digits1 == '' or digits2 == '':
-			return number1 == number2
-		if digits1[0] == digits2[0] == '+':
-			return digits1 == digits2
-		else:
-			return digits1[-7:] == digits2[-7:]
 
 	def clean(self):
 		if self.__database != None:
@@ -728,6 +699,7 @@ config.read([DEFAULT_CONFIG_PATH, CONFIGURATION_FILE])
 init_last_view_times(config)
 
 phone_data = PhoneData(systemBus, config)
+phoneutils.init()
 
 RefreshMonitor = SignalMonitor(systemBus)
 
@@ -777,6 +749,8 @@ populateListByPageNum(incoming, outgoing, missed, general, startup_page)
 
 #end of inits.
 mainloop.run()
+
+phoneutils.deinit()
 
 #clean and exit
 phone_data.clean()
