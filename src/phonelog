@@ -101,7 +101,7 @@ class CallsTab:
 		page.pack_start( self.__initScrolled() )
 		align = gtk.Alignment(1,1,1,1)
 		
-		buttons = gtk.HBox(homogeneous=True)
+		buttons = gtk.HBox(homogeneous=True, spacing = 3)
 		align.add(buttons)
 		page.pack_start(align, False, padding = 3)
 
@@ -123,10 +123,10 @@ class CallsTab:
 		durationButton.connect ("clicked", self.durationButton_clicked)
 		durationButton.set_size_request(-1,buttons_height)
 		
-		buttons.pack_start(callButton, True, padding = 1)
-		buttons.pack_start(contactButton, True, padding = 3)
-		buttons.pack_start(numberButton, True, padding = 3)
-		buttons.pack_start(durationButton, True, padding = 1)
+		buttons.pack_start(callButton, True)
+		buttons.pack_start(contactButton, True)
+		buttons.pack_start(numberButton, True)
+		buttons.pack_start(durationButton, True)
 		
 		self.__tab = page
 	def __createTreeView(self):
