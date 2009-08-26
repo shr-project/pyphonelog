@@ -21,7 +21,6 @@ import shutil
 import re
 from math import ceil
 from datetime import datetime
-from operator import itemgetter
 
 import dbus
 import gobject, gtk
@@ -504,6 +503,10 @@ class PhoneData:
                 if PhoneData.conf == None:
                   PhoneData.conf = config
                 assert PhoneData.conf != None
+	def dbus_ok(self, *args, **kargs):
+		pass
+	def dbus_err(self, x, *args, **kargs):
+		print str(x)
 	def initContacts(self):
 		if config.getboolean('phonelog','debug'):
 			print "Started caching contacts"
@@ -518,7 +521,7 @@ class PhoneData:
 
 		for result in results:
 			self.__contacts_cache[ phoneutils.normalize_number(result['Phone']) ] = result['Name']
-		query.Dispose() # delete query result from memory
+		query.Dispose(reply_handler = self.dbus_ok, error_handler = self.dbus_err) # delete query result from memory
 		
 		if config.getboolean('phonelog','debug'):
 			print "Done caching contacts"
@@ -555,14 +558,15 @@ class PhoneData:
 		else:
 			return None
 
+		props['_sortby'] = 'Timestamp'
+		props['_sortdesc'] = True
+
 		x = interface.Query(props)
 
 		query = self.getDbusObject (systemBus, self.CALLS_BUSNAME, x, self.CALLS_INTERFACE_QUERY)
 		calls = query.GetMultipleResults(query.GetResultCount())
 
 		query.Dispose() # delete query result from memory
-
-		calls.sort(key=itemgetter('Timestamp'), reverse = True) # temp solution, it will be done by opimd
 
 		if config.getboolean('phonelog','debug'):
 			print "Finished getting " + type
