@@ -1,0 +1,70 @@
+# SOME DESCRIPTIVE TITLE.
+# This file is put in the public domain.
+# FIRST AUTHOR hersche@puzzle.ch, 2009.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2009-08-27 15:49+0200\n"
+"PO-Revision-Date: 2009-09-01 11:45+0100\n"
+"Last-Translator: Sebastian Krzyszkowiak <seba.dos1@gmail.com>\n"
+"Language-Team: German <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+msgid "Showing main window"
+msgstr "Zeige Hauptfenster"
+
+msgid "Failed to initialize contacts"
+msgstr "Das initialisieren der Kontakte ist fehlgeschlagen"
+
+msgid "Call"
+msgstr "Anrufen"
+
+msgid "Numbers"
+msgstr "Nummern"
+
+msgid "Add"
+msgstr "Hinzufügen"
+
+msgid "Duration"
+msgstr "Dauer"
+
+msgid "Started populating list"
+msgstr "Starte mit dem erstellen der Liste"
+
+msgid "Done populating list"
+msgstr "Liste fertiggestellt"
+
+msgid "Failed to initiate a call"
+msgstr "Anruf ist fehlgeschlagen"
+
+msgid "Names"
+msgstr "Namen"
+
+msgid "Date"
+msgstr "Datum"
+
+msgid "Started caching contacts"
+msgstr "Starte mit dem cachen der Kontakte"
+
+msgid "Done caching contacts"
+msgstr "Kontakte fertig gecacht"
+
+msgid "Started getting "
+msgstr "Beginne mit holen von: "
+
+msgid "Finished getting "
+msgstr "Fertig mit holen von: "
+
+msgid "Phonelog"
+msgstr "Telefonlogger"
+
+msgid "Initialized global vars"
+msgstr "Globale Variablen initialisiert"
+
+msgid "Initializing gtk interface"
+msgstr "Initialisiere GTK-Oberfläche"
+

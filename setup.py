@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from distutils.core import setup
 import glob
     
@@ -20,6 +21,7 @@ setup(name='pyphonelog',
 	data_files= [
 		('applications', ['data/applications/phonelog.desktop']),
 		('pixmaps', ['data/pixmaps/phonelog.png']),
+		('locale/de/LC_MESSAGES', ['data/po/de/phonelog.mo']),
 		('phonelog/skeleton', ['data/config/phonelog.conf']),
 		('phonelog/icons', ['data/pixmaps/ui/missed.png',\
 				    'data/pixmaps/ui/received.png',\
