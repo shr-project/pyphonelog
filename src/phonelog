@@ -21,7 +21,7 @@ import shutil
 import re
 from math import ceil
 from datetime import datetime
-
+import gettext
 import dbus
 import gobject, gtk
 import sqlite3
@@ -33,6 +33,12 @@ try:
 	use_mokoui = True
 except:
 	use_mokoui = False
+
+try:
+	cat = gettext.Catalog("phonelog")
+	_ = cat.gettext
+except IOError:
+	_ = lambda x: x
 
 
 #constants
@@ -106,19 +112,19 @@ class CallsTab:
 
 		buttons_height = CallsTab.conf.getint('phonelog','buttons_height')
 		
-		callButton = gtk.Button("Call")
+		callButton = gtk.Button(_("Call"))
 		callButton.connect ("clicked", self.callButton_clicked)
 		callButton.set_size_request(-1,buttons_height)
 
-		numberButton = gtk.Button("Numbers")
+		numberButton = gtk.Button(_("Numbers"))
 		numberButton.connect ("clicked", self.numberButton_clicked)
 		numberButton.set_size_request(-1,buttons_height)
 
-		contactButton = gtk.Button("Add")
+		contactButton = gtk.Button(_("Add"))
 		contactButton.connect ("clicked", self.contactButton_clicked)
 		contactButton.set_size_request(-1,buttons_height)
 
-		durationButton = gtk.Button("Duration")
+		durationButton = gtk.Button(_("Duration"))
 		durationButton.connect ("clicked", self.durationButton_clicked)
 		durationButton.set_size_request(-1,buttons_height)
 		
@@ -177,7 +183,7 @@ class CallsTab:
 		global phone_data
 		
 		if config.getboolean('phonelog','debug'):
-			print "Started populating list"
+			print _("Started populating list")
 
 		self.setManuallyUpdated()
 		
@@ -302,7 +308,7 @@ class CallsTab:
 		CallsTab.conf.set('viewlog',type,str(time.time()))
 
 		if config.getboolean('phonelog','debug'):
-			print "Done populating list"
+			print _("Done populating list")
 			
 		return True										
 
@@ -319,7 +325,7 @@ class CallsTab:
 			try:
 				phoneObject.Initiate (number, 'voice')
 			except:
-				print "Failed to initiate a call"
+				print _("Failed to initiate a call")
 	def contactButton_clicked (self, button):
 		global phone_data
 		phoneObject = phone_data.getPhoneObject(systemBus)
@@ -333,7 +339,7 @@ class CallsTab:
 			try:
 				os.system("shr-contacts " + number + " &")
 			except:
-				print "Failed to initiate a call"
+				print _("Failed to initiate a call")
 		
 	def numberButton_clicked (self, button):
 		list = self.__list
@@ -346,11 +352,11 @@ class CallsTab:
 		
 		if self.__contact_show_column == self.CONTACT_POSITION:
 			self.__contact_show_column = self.NUMBER_POSITION
-			button_label = "Names"
+			button_label = _("Names")
 
 		else:
 			self.__contact_show_column = self.CONTACT_POSITION
-			button_label = "Numbers"
+			button_label = _("Numbers")
 			
 		button.set_label(button_label)
 		contact_column.set_attributes(renderer, text=self.__contact_show_column)
@@ -368,11 +374,11 @@ class CallsTab:
 		
 		if self.__date_show_column == self.DATE_POSITION:
 			self.__date_show_column = self.DURATION_POSITION
-			button_label = "Date"
+			button_label = _("Date")
 
 		else:
 			self.__date_show_column = self.DATE_POSITION
-			button_label = "Duration"
+			button_label = _("Duration")
 			
 		button.set_label(button_label)
 		date_column.set_attributes(renderer, text=self.__date_show_column)
@@ -509,7 +515,7 @@ class PhoneData:
 		print str(x)
 	def initContacts(self):
 		if config.getboolean('phonelog','debug'):
-			print "Started caching contacts"
+			print _("Started caching contacts")
 		contactsObject = self.getContactsObject(systemBus)
 		
 		interface = self.getDbusObject (systemBus, self.CONTACTS_BUSNAME, self.CONTACTS_OBJECTPATH, self.CONTACTS_INTERFACE)
@@ -524,7 +530,7 @@ class PhoneData:
 		query.Dispose(reply_handler = self.dbus_ok, error_handler = self.dbus_err) # delete query result from memory
 		
 		if config.getboolean('phonelog','debug'):
-			print "Done caching contacts"
+			print _("Done caching contacts")
 		
 	def getContact(self, number):
 		can_num = phoneutils.normalize_number(number)
@@ -539,7 +545,7 @@ class PhoneData:
 	def getCalls(self, type):
 
 		if config.getboolean('phonelog','debug'):
-			print "Started getting " + type
+			print _("Started getting ") + type
 			
 		interface = self.getDbusObject (systemBus, self.CALLS_BUSNAME, self.CALLS_OBJECTPATH, self.CALLS_INTERFACE)
 
@@ -569,7 +575,7 @@ class PhoneData:
 		query.Dispose() # delete query result from memory
 
 		if config.getboolean('phonelog','debug'):
-			print "Finished getting " + type
+			print _("Finished getting ") + type
 
 		return calls
 	def getDbusObject (self, bus, busname , objectpath , interface):
@@ -689,7 +695,7 @@ def cb_TabSwitch(notebook, page, page_num, incoming, outgoing, missed, general):
 ################# MAIN ######################
 #############################################
 
-print "Phonelog"
+print _("Phonelog")
 #create the config dir if doesn't exist.
 if not os.path.exists(CONFIGURATION_DIR):
 	os.mkdir(CONFIGURATION_DIR)
@@ -708,14 +714,14 @@ phoneutils.init()
 RefreshMonitor = SignalMonitor(systemBus)
 
 if config.getboolean('phonelog','debug'):
-	print "Initialized global vars"
-	print "Initializing gtk interface"
+	print _("Initialized global vars")
+	print _("Initializing gtk interface")
 
 win = gtk.Window()
 notebook= gtk.Notebook()
 win.add (notebook)
 win.connect('delete-event', quitMainloop )
-win.set_title("Phone Log")
+win.set_title(_("Phone Log"))
 win.set_default_size(480,640)
 
 if config.getboolean('phonelog','change_rotate_layout'):
@@ -733,7 +739,7 @@ missed.addToTab(notebook)
 general.addToTab(notebook)
 
 if config.getboolean('phonelog','debug'):
-	print "Showing main window"
+	print _("Showing main window")
 win.show_all()
 
 startup_page = stringToTabNumber(config.get('phonelog','startup_tab') )
@@ -746,7 +752,7 @@ notebook.connect ("switch-page", cb_TabSwitch, incoming, outgoing, missed, gener
 try:
 	phone_data.initContacts()
 except:
-	print "Failed to initialize contacts"
+	print _("Failed to initialize contacts")
 
 
 populateListByPageNum(incoming, outgoing, missed, general, startup_page)
