@@ -22,6 +22,7 @@ setup(name='pyphonelog',
 		('applications', ['data/applications/phonelog.desktop']),
 		('pixmaps', ['data/pixmaps/phonelog.png']),
 		('locale/de/LC_MESSAGES', ['data/po/de/phonelog.mo']),
+                ('locale/fr/LC_MESSAGES', ['data/po/fr/phonelog.mo']),
 		('phonelog/skeleton', ['data/config/phonelog.conf']),
 		('phonelog/icons', ['data/pixmaps/ui/missed.png',\
 				    'data/pixmaps/ui/received.png',\

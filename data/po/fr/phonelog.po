@@ -1,0 +1,68 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: pyphonelog\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2009-08-27 15:49+0200\n"
+"PO-Revision-Date: 2009-09-09 18:10+0100\n"
+"Last-Translator: Ghislain MARY <gmary@lunacymaze.org>\n"
+"Language-Team: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Poedit-Language: French\n"
+"X-Poedit-Country: FRANCE\n"
+
+msgid "Showing main window"
+msgstr "Affichage de la fenêtre principale"
+
+msgid "Failed to initialize contacts"
+msgstr "Échec de l'initialisation des contacts"
+
+msgid "Call"
+msgstr "Appeler"
+
+msgid "Numbers"
+msgstr "Numéros"
+
+msgid "Add"
+msgstr "Ajouter"
+
+msgid "Duration"
+msgstr "Durée"
+
+msgid "Started populating list"
+msgstr "Début du remplissage de la liste"
+
+msgid "Done populating list"
+msgstr "Fin du remplissage de la liste"
+
+msgid "Failed to initiate a call"
+msgstr "Échec du démarrage de l'appel"
+
+msgid "Names"
+msgstr "Noms"
+
+msgid "Date"
+msgstr "Date"
+
+msgid "Started caching contacts"
+msgstr "Début de la mise en cache des contacts"
+
+msgid "Done caching contacts"
+msgstr "Fin de la mise en cache des contacts"
+
+msgid "Started getting "
+msgstr "Début de la récupération"
+
+msgid "Finished getting "
+msgstr "Fin de la récupération"
+
+msgid "Phonelog"
+msgstr "Liste d'appels"
+
+msgid "Initialized global vars"
+msgstr "Initialisation des variables globales terminée"
+
+msgid "Initializing gtk interface"
+msgstr "Initialisation de l'interface gtk en cours"
+
