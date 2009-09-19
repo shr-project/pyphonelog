@@ -526,7 +526,22 @@ class PhoneData:
 		results = query.GetMultipleResults(query.GetResultCount())
 
 		for result in results:
-			self.__contacts_cache[ phoneutils.normalize_number(result['Phone']) ] = result['Name']
+			for field in result:
+				if field.lower().endswith('phone'):
+					if 'Name' in result:
+						name = result['Name']
+					if 'Surname' in result:
+						name += ' '+result['Surname']
+					if name=='':
+						if 'Nickname' in result:
+							name = result['Nickname']
+						else:
+							name = "???"
+					if type(result[field]) == dbus.Array:
+						for subres in result[field]:
+							self.__contacts_cache[ phoneutils.normalize_number(subres) ] = name
+					else:
+						self.__contacts_cache[ phoneutils.normalize_number(result[field]) ] = name
 		query.Dispose(reply_handler = self.dbus_ok, error_handler = self.dbus_err) # delete query result from memory
 		
 		if config.getboolean('phonelog','debug'):
