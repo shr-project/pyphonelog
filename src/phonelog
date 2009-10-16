@@ -204,8 +204,7 @@ class CallsTab:
 		last_parent_added = None
 		child_count = 0
 		
-		for call in calls:
-			
+		for call in calls:			
 			if call.has_key('Peer'):
 				number = call['Peer']
 				number = number.strip('tel:')
@@ -226,6 +225,11 @@ class CallsTab:
 				status = 0
 			else:
 				status = 1
+
+			#FIXME: I'm marking all I get as read.
+			if status == 2 and call['New'] != 0:
+				mark = phone_data.getMarkViewedObject (systemBus, call['Path'])
+				mark.Update({'New':0})
 
 			#if none at least make it 0, else, numerify it.
 			if not call.has_key('Duration'):
@@ -289,7 +293,7 @@ class CallsTab:
 					number ,
 					timeToString(call_time) ,
 					active_time, 
-					visual_flag and (call_time > previous_time) ,
+					call['New'] != 0 ,
 					status
 					)
 				)
@@ -467,20 +471,9 @@ class PhoneData:
 	CALL_STATUS_HELD = 3
 	CALL_STATUS_RELEASE = 4
 
-	"""PHONELOG_BUSNAME = "org.freesmartphone.opimd"
-	PHONELOG_OBJECTPATH = "/org/freesmartphone/PIM/Log"
-	PHONELOG_INTERFACE = "org.freesmartphone.PIM.Log.Calls"
-	"""
-	
-	PHONELOG_BUSNAME = "org.smartphone.opimd"
-	PHONELOG_OBJECTPATH = "/org/smartphone/PIM/Log"
-	PHONELOG_INTERFACE = "org.smartphone.PIM.Log.Calls"
-
-	"""
-	CONTACTS_BUSNAME = 'org.freesmartphone.ogsmd'
-	CONTACTS_OBJECTPATH = '/org/freesmartphone/GSM/Device'
-	CONTACTS_INTERFACE = 'org.freesmartphone.GSM.SIM'
-	"""
+	MARKVIEWED_BUSNAME = 'org.freesmartphone.opimd'
+	#MARKVIEWED_OBJECTPATH = '/org/freesmartphone/PIM/Calls'
+	MARKVIEWED_INTERFACE = 'org.freesmartphone.PIM.Call'
 
 	CONTACTS_BUSNAME = 'org.freesmartphone.opimd'
 	CONTACTS_OBJECTPATH = '/org/freesmartphone/PIM/Contacts'
@@ -585,6 +578,7 @@ class PhoneData:
 		x = interface.Query(props)
 
 		query = self.getDbusObject (systemBus, self.CALLS_BUSNAME, x, self.CALLS_INTERFACE_QUERY)
+			
 		calls = query.GetMultipleResults(query.GetResultCount())
 
 		query.Dispose() # delete query result from memory
@@ -596,11 +590,11 @@ class PhoneData:
 	def getDbusObject (self, bus, busname , objectpath , interface):
 		dbusObject = bus.get_object(busname, objectpath)
 		return dbus.Interface(dbusObject, dbus_interface=interface)
-	def getPhoneLogObject (self, bus):
+	def getMarkViewedObject (self, bus, object_path):
 		return self.getDbusObject (bus,
-				      self.PHONELOG_BUSNAME,
-				      self.PHONELOG_OBJECTPATH,
-				      self.PHONELOG_INTERFACE
+				      self.MARKVIEWED_BUSNAME,
+				      object_path,
+				      self.MARKVIEWED_INTERFACE
 				     )
 
 	def getContactsObject (self, bus):
