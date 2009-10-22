@@ -340,10 +340,10 @@ class CallsTab:
 		number = self.__getSelectedNumber()
 		
 		if number != None and number != CallsTab.conf.get('phonelog',"suppressed_name"):
-			#FIXME a bit ugly, until a better solution found.
-			# just to make sure you read the last line, ITS UGLY!
 			try:
-				os.system("shr-contacts " + number + " &")
+				props = {'Phone':number}
+				phoneui = phone_data.getPhoneuiObject(systemBus)
+				phoneui.CreateContact(props)
 			except:
 				print _("Failed to initiate a call")
 		
@@ -490,7 +490,11 @@ class PhoneData:
 	PHONE_BUSNAME = 'org.freesmartphone.ogsmd'
 	PHONE_OBJECTPATH = '/org/freesmartphone/GSM/Device'
 	PHONE_INTERFACE = 'org.freesmartphone.GSM.Call'
-
+	
+	PHONEUI_BUSNAME = 'org.shr.phoneui.Contacts' 
+	PHONEUI_OBJECTPATH = '/org/shr/phoneui/Contacts'
+	PHONEUI_INTERFACE = 'org.shr.phoneui.Contacts'
+	
 	LEGACY_TYPE = 0
 	OPHONEKITD_TYPE = 1
 	__phonelog_type = OPHONEKITD_TYPE
@@ -608,6 +612,12 @@ class PhoneData:
 				      self.CONTACTS_BUSNAME,
 				      self.CONTACTS_OBJECTPATH,
 				      self.CONTACTS_INTERFACE
+				     )
+	def getPhoneuiObject (self, bus):
+		return self.getDbusObject (bus,
+				      self.PHONEUI_BUSNAME,
+				      self.PHONEUI_OBJECTPATH,
+				      self.PHONEUI_INTERFACE
 				     )
 
 	def getPhoneObject (self, bus):
