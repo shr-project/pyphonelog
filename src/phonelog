@@ -28,11 +28,8 @@ import sqlite3
 from dbus.mainloop.glib import DBusGMainLoop
 import phoneutils
 
-try:
-	import mokoui
-	use_mokoui = True
-except:
-	use_mokoui = False
+#We stopped using mokoui as it's broken
+use_mokoui = False
 
 try:
 	cat = gettext.Catalog("phonelog")
