@@ -338,7 +338,7 @@ class CallsTab:
 		
 		if number != None and number != CallsTab.conf.get('phonelog',"suppressed_name"):
 			try:
-				props = {'Phone':number}
+				props = {'Phone':"tel:" + number}
 				phoneui = phone_data.getPhoneuiObject(systemBus)
 				phoneui.CreateContact(props)
 			except:
