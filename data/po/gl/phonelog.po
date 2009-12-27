@@ -1,0 +1,72 @@
+# David Garabana Barro <david@garabana.com>, 2009.
+msgid ""
+msgstr ""
+"Project-Id-Version: pyphonelog\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2009-08-27 15:49+0200\n"
+"PO-Revision-Date: 2009-12-19 02:44+0100\n"
+"Last-Translator: David Garabana Barro <david@garabana.com>\n"
+"Language-Team: Galician <>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Poedit-Language: French\n"
+"X-Poedit-Country: FRANCE\n"
+"X-Generator: Lokalize 1.0\n"
+"Plural-Forms: nplurals=2; plural=n != 1;\n"
+
+msgid "Showing main window"
+msgstr "Amosando a fiestra principal"
+
+msgid "Failed to initialize contacts"
+msgstr "Fallou a iniciación dos contactos"
+
+msgid "Call"
+msgstr "Chamar"
+
+msgid "Numbers"
+msgstr "Números"
+
+msgid "Add"
+msgstr "Engadir"
+
+msgid "Duration"
+msgstr "Duración"
+
+msgid "Started populating list"
+msgstr "Comezou a carga da lista"
+
+msgid "Done populating list"
+msgstr "Rematada a carga da lista"
+
+msgid "Failed to initiate a call"
+msgstr "Fallou o establecemento dunha chamada"
+
+msgid "Names"
+msgstr "Nomes"
+
+msgid "Date"
+msgstr "Data"
+
+msgid "Started caching contacts"
+msgstr "Comezou a carga en caché dos contactos"
+
+msgid "Done caching contacts"
+msgstr "Rematada a carga en caché dos contactos"
+
+msgid "Started getting "
+msgstr "Comezou a obtención "
+
+msgid "Finished getting "
+msgstr "Rematou a obtención"
+
+msgid "Phonelog"
+msgstr "Lista de chamadas"
+
+msgid "Initialized global vars"
+msgstr "Iniciáronse as variables globais"
+
+msgid "Initializing gtk interface"
+msgstr "Iniciando a interfaz gtk"
+
+
