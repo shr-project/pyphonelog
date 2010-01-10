@@ -1,0 +1,67 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: pyphonelog\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2009-08-27 15:49+0200\n"
+"PO-Revision-Date: 2009-10-12 21:30+0100\n"
+"Last-Translator: Michael Moroni <haikara90@gmail.com>\n"
+"Language-Team: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Poedit-Language: Esperanto\n"
+
+msgid "Showing main window"
+msgstr "Montri ĉeffenestro"
+
+msgid "Failed to initialize contacts"
+msgstr "Fiaskis la ŝarĝadon de kontaktoj"
+
+msgid "Call"
+msgstr "Voki"
+
+msgid "Numbers"
+msgstr "Numeroj"
+
+msgid "Add"
+msgstr "Aldoni"
+
+msgid "Duration"
+msgstr "Daŭro"
+
+msgid "Started populating list"
+msgstr "Pligrandigon de listo komencita"
+
+msgid "Done populating list"
+msgstr "Pligrandigon de listo terminita"
+
+msgid "Failed to initiate a call"
+msgstr "Fiaskis en komencado de voko"
+
+msgid "Names"
+msgstr "Nomoj"
+
+msgid "Date"
+msgstr "Datoj"
+
+msgid "Started caching contacts"
+msgstr "Kaŝmemori kontaktojn komencita"
+
+msgid "Done caching contacts"
+msgstr "Kaŝmemori kontaktojn terminita"
+
+msgid "Started getting "
+msgstr "Komencita obtenadon de "
+
+msgid "Finished getting "
+msgstr "Komencita obtenadon de "
+
+msgid "Phonelog"
+msgstr "TelefonRegistro"
+
+msgid "Initialized global vars"
+msgstr "Komencado de ĉionenetenaj variabloj"
+
+msgid "Initializing gtk interface"
+msgstr "Komencanta gtk interfacon"
+
