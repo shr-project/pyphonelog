@@ -205,7 +205,6 @@ class CallsTab:
 			highlight_call = False
 			if call.has_key('Peer'):
 				number = call['Peer']
-				number = number.strip('tel:')
 				contact = phone_data.getContact(number)
 			else:
 				#don't group supressed numbers
@@ -338,7 +337,7 @@ class CallsTab:
 		
 		if number != None and number != CallsTab.conf.get('phonelog',"suppressed_name"):
 			try:
-				props = {'Phone':"tel:" + number}
+				props = {'Phone':number}
 				phoneui = phone_data.getPhoneuiObject(systemBus)
 				phoneui.CreateContact(props)
 			except:
