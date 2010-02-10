@@ -561,20 +561,16 @@ class PhoneData:
 
 		if type == "missed":
 			props = {'Answered':0, 'Direction':'in'}
-			#props['_limit'] = 
-			limit = PhoneData.conf.getint('phonelog', 'missed_limit') 
+			props['_limit'] = PhoneData.conf.getint('phonelog', 'missed_limit') 
 		elif type == "incoming":
 			props = {'Answered':1, 'Direction':'in'}
-			#props['_limit'] = 
-			limit = PhoneData.conf.getint('phonelog', 'received_limit') 
+			props['_limit'] = PhoneData.conf.getint('phonelog', 'received_limit') 
 		elif type == "outgoing":
 			props = {'Direction':'out'}
-			#props['_limit'] = 
-			limit = PhoneData.conf.getint('phonelog', 'made_limit') 
+			props['_limit'] = PhoneData.conf.getint('phonelog', 'made_limit') 
 		elif type == "all":
 			props = {}
-			#props['_limit'] = 
-			limit = PhoneData.conf.getint('phonelog', 'general_limit') 
+			props['_limit'] = PhoneData.conf.getint('phonelog', 'general_limit') 
 		else:
 			return None
 
@@ -592,7 +588,7 @@ class PhoneData:
 		if config.getboolean('phonelog','debug'):
 			print _("Finished getting ") + type
 
-		return calls[:limit]
+		return calls
 	def getDbusObject (self, bus, busname , objectpath , interface):
 		dbusObject = bus.get_object(busname, objectpath)
 		return dbus.Interface(dbusObject, dbus_interface=interface)
