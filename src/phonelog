@@ -214,9 +214,9 @@ class CallsTab:
 				contact = CallsTab.conf.get('phonelog',"suppressed_name")
 
 			timestamp = call['Timestamp']	
-			call_time = datetime.fromtimestamp( timestamp )
+			call_time = datetime.fromtimestamp( float(timestamp) )
 				
-			if call['Direction'] == 'in' and call['Answered'] == 0:
+			if call['Direction'] == 'in' and int(call['Answered']) == 0:
 				status = 2
 			elif call['Direction'] == 'in':
 				status = 0
@@ -224,7 +224,7 @@ class CallsTab:
 				status = 1
 
 			#FIXME: I'm marking all I get as read.
-			if status == 2 and call['New'] != 0:
+			if status == 2 and int(call['New']) != 0:
 				mark = phone_data.getMarkViewedObject (systemBus, call['Path'])
 				mark.Update({'New':0})
 				highlight_call = True
@@ -233,7 +233,7 @@ class CallsTab:
 			if not call.has_key('Duration'):
 				tmp_duration = 0
 			else:
-				tmp_duration = ceil(call['Duration'])
+				tmp_duration = ceil(float(call['Duration']))
 
 			active_hours = int(tmp_duration / 3600)
 			active_minutes = int(tmp_duration / 60 - active_hours * 60)
