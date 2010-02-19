@@ -192,6 +192,11 @@ class CallsTab:
 		calls = self.__getCalls()
 		if calls == None:
 			return False
+		#retrieve contacts
+		try:
+			phone_data.initContacts(calls)
+		except:
+			print _("Failed to initialize contacts")
 			
 		#get and clear the model.
 		model = list.get_model()
@@ -508,14 +513,18 @@ class PhoneData:
 		pass
 	def dbus_err(self, x, *args, **kargs):
 		print str(x)
-	def initContacts(self):
+	def initContacts(self, calls):
+		query_numbers = []
 		if config.getboolean('phonelog','debug'):
 			print _("Started caching contacts")
+		for call in calls:
+			if call.get('Peer') and call.get('Peer') not in query_numbers and call.get('Peer') not in self.__contacts_cache:
+				query_numbers.append(call.get('Peer'))
 		contactsObject = self.getContactsObject(systemBus)
 		
 		interface = self.getDbusObject (systemBus, self.CONTACTS_BUSNAME, self.CONTACTS_OBJECTPATH, self.CONTACTS_INTERFACE)
 
-		x = interface.Query({})
+		x = interface.Query({'$phonenumber':query_numbers})
 
 		query = self.getDbusObject (systemBus, self.CONTACTS_BUSNAME, x, self.CONTACTS_INTERFACE_QUERY)
 		results = query.GetMultipleResults(query.GetResultCount())
@@ -763,13 +772,6 @@ startup_page = stringToTabNumber(config.get('phonelog','startup_tab') )
 notebook.set_current_page(startup_page)
 
 notebook.connect ("switch-page", cb_TabSwitch, incoming, outgoing, missed, general)
-
-
-#retrieve contacts
-try:
-	phone_data.initContacts()
-except:
-	print _("Failed to initialize contacts")
 
 
 populateListByPageNum(incoming, outgoing, missed, general, startup_page)
