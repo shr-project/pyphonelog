@@ -492,7 +492,7 @@ class PhoneData:
 	PHONE_OBJECTPATH = '/org/freesmartphone/GSM/Device'
 	PHONE_INTERFACE = 'org.freesmartphone.GSM.Call'
 	
-	PHONEUI_BUSNAME = 'org.shr.phoneui.Contacts' 
+	PHONEUI_BUSNAME = 'org.shr.phoneui' 
 	PHONEUI_OBJECTPATH = '/org/shr/phoneui/Contacts'
 	PHONEUI_INTERFACE = 'org.shr.phoneui.Contacts'
 	
