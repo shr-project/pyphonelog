@@ -229,7 +229,7 @@ class CallsTab:
 				status = 1
 
 			#FIXME: I'm marking all I get as read.
-			if status == 2 and int(call['New']) != 0:
+			if status == 2 and call.has_key('New') and int(call['New']) != 0:
 				mark = phone_data.getMarkViewedObject (systemBus, call['Path'])
 				mark.Update({'New':0})
 				highlight_call = True
