@@ -181,7 +181,6 @@ class CallsTab:
 		
 		if config.getboolean('phonelog','debug'):
 			print _("Started populating list")
-
 		self.setManuallyUpdated()
 		
 		list = self.__list
@@ -192,12 +191,7 @@ class CallsTab:
 		calls = self.__getCalls()
 		if calls == None:
 			return False
-		#retrieve contacts
-		try:
-			phone_data.initContacts(calls)
-		except:
-			print _("Failed to initialize contacts")
-			
+
 		#get and clear the model.
 		model = list.get_model()
 		model.clear()
@@ -210,7 +204,12 @@ class CallsTab:
 			highlight_call = False
 			if call.has_key('Peer'):
 				number = call['Peer']
-				contact = phone_data.getContact(number)
+				if call.has_key('@ContactId'):
+					interface = phone_data.getDbusObject (systemBus, phone_data.CONTACTS_BUSNAME, phone_data.CONTACTS_OBJECTPATH + "/" + str(call['@ContactId']), phone_data.CONTACT_INTERFACE)
+					raw_contact = interface.GetContent()
+					contact = phone_data.getContactDisplay(raw_contact)
+				else:
+					contact = number
 			else:
 				#don't group supressed numbers
 				#and make the contact Unknown Number
@@ -481,6 +480,7 @@ class PhoneData:
 	CONTACTS_BUSNAME = 'org.freesmartphone.opimd'
 	CONTACTS_OBJECTPATH = '/org/freesmartphone/PIM/Contacts'
 	CONTACTS_INTERFACE = 'org.freesmartphone.PIM.Contacts'
+	CONTACT_INTERFACE = 'org.freesmartphone.PIM.Contact'
 	CONTACTS_INTERFACE_QUERY = 'org.freesmartphone.PIM.ContactQuery'
 
 	CALLS_BUSNAME = 'org.freesmartphone.opimd'
@@ -513,50 +513,18 @@ class PhoneData:
 		pass
 	def dbus_err(self, x, *args, **kargs):
 		print str(x)
-	def initContacts(self, calls):
-		query_numbers = []
-		if config.getboolean('phonelog','debug'):
-			print _("Started caching contacts")
-		for call in calls:
-			if call.get('Peer') and call.get('Peer') not in query_numbers and call.get('Peer') not in self.__contacts_cache:
-				query_numbers.append(call.get('Peer'))
-		contactsObject = self.getContactsObject(systemBus)
-		
-		interface = self.getDbusObject (systemBus, self.CONTACTS_BUSNAME, self.CONTACTS_OBJECTPATH, self.CONTACTS_INTERFACE)
-
-		x = interface.Query({'$phonenumber':query_numbers})
-
-		query = self.getDbusObject (systemBus, self.CONTACTS_BUSNAME, x, self.CONTACTS_INTERFACE_QUERY)
-		results = query.GetMultipleResults(query.GetResultCount())
-
-		for result in results:
-			for field in result:
-				if field.lower().endswith('phone'):
-					if 'Name' in result:
-						name = result['Name']
-					if 'Surname' in result:
-						name += ' '+result['Surname']
-					if name=='':
-						if 'Nickname' in result:
-							name = result['Nickname']
-						else:
-							name = "???"
-					if type(result[field]) == dbus.Array:
-						for subres in result[field]:
-							self.__contacts_cache[ phoneutils.normalize_number(subres) ] = name
-					else:
-						self.__contacts_cache[ phoneutils.normalize_number(result[field]) ] = name
-		query.Dispose(reply_handler = self.dbus_ok, error_handler = self.dbus_err) # delete query result from memory
-		
-		if config.getboolean('phonelog','debug'):
-			print _("Done caching contacts")
-		
-	def getContact(self, number):
-		can_num = phoneutils.normalize_number(number)
-		if can_num in self.__contacts_cache:
-			return self.__contacts_cache[can_num]
-		else:
-			return number
+	def getContactDisplay(self, result):
+		name = ''
+		if 'Name' in result:
+			name = result['Name']
+		if 'Surname' in result:
+			name += ' '+result['Surname']
+		if name=='':
+			if 'Nickname' in result:
+				name = result['Nickname']
+			else:
+				name = "???"
+		return name
 
 	def clean(self):
 		if self.__database != None:
@@ -585,6 +553,7 @@ class PhoneData:
 
 		props['_sortby'] = 'Timestamp'
 		props['_sortdesc'] = True
+		props['_resolve_phonenumber'] = True
 
 		x = interface.Query(props)
 
