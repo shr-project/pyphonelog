@@ -205,7 +205,7 @@ class CallsTab:
 			if call.has_key('Peer'):
 				number = call['Peer']
 				if call.has_key('@contacts'):
-					interface = phone_data.getDbusObject (systemBus, phone_data.CONTACTS_BUSNAME, phone_data.CONTACTS_OBJECTPATH + "/" + str(call['@ContactId']), phone_data.CONTACT_INTERFACE)
+					interface = phone_data.getDbusObject (systemBus, phone_data.CONTACTS_BUSNAME, phone_data.CONTACTS_OBJECTPATH + "/" + str(call['@contacts']), phone_data.CONTACT_INTERFACE)
 					raw_contact = interface.GetContent()
 					contact = phone_data.getContactDisplay(raw_contact)
 				else:
