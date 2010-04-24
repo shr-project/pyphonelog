@@ -184,8 +184,8 @@ class CallsTab:
 		self.setManuallyUpdated()
 		
 		list = self.__list
-		type = self.__type
-		previous_time = datetime.fromtimestamp(CallsTab.conf.getfloat('viewlog', type))
+		call_type = self.__type
+		previous_time = datetime.fromtimestamp(CallsTab.conf.getfloat('viewlog', call_type))
 		visual_flag = self.shouldMarkNew()
 
 		calls = self.__getCalls()
@@ -205,7 +205,10 @@ class CallsTab:
 			if call.has_key('Peer'):
 				number = call['Peer']
 				if call.has_key('@contacts'):
-					interface = phone_data.getDbusObject (systemBus, phone_data.CONTACTS_BUSNAME, phone_data.CONTACTS_OBJECTPATH + "/" + str(call['@contacts']), phone_data.CONTACT_INTERFACE)
+					contact_id = call['@contacts']
+					if type(contact_id) == dbus.Array or type(contact_id) == list:
+						contact_id = contact_id[0]
+					interface = phone_data.getDbusObject (systemBus, phone_data.CONTACTS_BUSNAME, phone_data.CONTACTS_OBJECTPATH + "/" + str(contact_id), phone_data.CONTACT_INTERFACE)
 					raw_contact = interface.GetContent()
 					contact = phone_data.getContactDisplay(raw_contact)
 				else:
@@ -311,7 +314,7 @@ class CallsTab:
 				model.set_value(last_parent_added,self.CONTACT_POSITION, "%s (%d)" % (current_value, child_count))
 				
 		#Set last refresh time to now
-		CallsTab.conf.set('viewlog',type,str(time.time()))
+		CallsTab.conf.set('viewlog',call_type,str(time.time()))
 
 		if config.getboolean('phonelog','debug'):
 			print _("Done populating list")
