@@ -204,12 +204,11 @@ class CallsTab:
 			highlight_call = False
 			if call.has_key('Peer'):
 				number = call['Peer']
-				if call.has_key('@contacts'):
-					contact_id = call['@contacts']
-					if type(contact_id) == dbus.Array or type(contact_id) == list:
-						contact_id = contact_id[0]
-					interface = phone_data.getDbusObject (systemBus, phone_data.CONTACTS_BUSNAME, phone_data.CONTACTS_OBJECTPATH + "/" + str(contact_id), phone_data.CONTACT_INTERFACE)
-					raw_contact = interface.GetContent()
+				if call.has_key('@Contacts'):
+					if type(call['@Contacts']) in (list, dbus.Array):
+					    raw_contact = call['@Contacts'][0]
+					else:
+					    raw_contact = call['@Contacts']
 					contact = phone_data.getContactDisplay(raw_contact)
 				else:
 					contact = number
@@ -557,6 +556,7 @@ class PhoneData:
 		props['_sortby'] = 'Timestamp'
 		props['_sortdesc'] = True
 		props['_resolve_phonenumber'] = True
+		props['_retrieve_full_contact'] = True
 
 		x = interface.Query(props)
 
