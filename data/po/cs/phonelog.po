@@ -1,0 +1,70 @@
+# SOME DESCRIPTIVE TITLE.
+# This file is put in the public domain.
+# FIRST AUTHOR kristofc97@gmail.com, 2012.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2012-08-12 15:49+0200\n"
+"PO-Revision-Date: 2012-08-13 12:21+0100\n"
+"Last-Translator: Kryštof Celba <kristofc97@gmail.com>\n"
+"Language-Team: Czech <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+msgid "Showing main window"
+msgstr "Zobrazování hlavního okna"
+
+msgid "Failed to initialize contacts"
+msgstr "Nepodařilo se inicializovat kontakty"
+
+msgid "Call"
+msgstr "Volat"
+
+msgid "Numbers"
+msgstr "Čísla"
+
+msgid "Add"
+msgstr "Přidat"
+
+msgid "Duration"
+msgstr "Délka"
+
+msgid "Started populating list"
+msgstr "Zahájeno naplňování seznamu"
+
+msgid "Done populating list"
+msgstr "Naplňování seznamu dokončeno"
+
+msgid "Failed to initiate a call"
+msgstr "Nepodařilo se zahájit hovor"
+
+msgid "Names"
+msgstr "Jména"
+
+msgid "Date"
+msgstr "Datum"
+
+msgid "Started caching contacts"
+msgstr "Zahájeno kešování kontaktů"
+
+msgid "Done caching contacts"
+msgstr "Kešování kontaktů dokončeno"
+
+msgid "Started getting "
+msgstr "Zahájeno dostávání "
+
+msgid "Finished getting "
+msgstr "Dokončeno dostávání "
+
+msgid "Phonelog"
+msgstr "Historie hovorů"
+
+msgid "Initialized global vars"
+msgstr "Inicializované globální promněnné"
+
+msgid "Initializing gtk interface"
+msgstr "Inicializování gtk rozhraní"
+
